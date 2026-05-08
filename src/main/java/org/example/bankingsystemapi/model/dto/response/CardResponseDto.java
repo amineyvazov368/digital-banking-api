@@ -15,4 +15,5 @@ public class CardResponseDto {
     private CardType cardType;
     private CardStatus cardStatus;
     private LocalDateTime createdAt;
+    private Long accountId;
 }
