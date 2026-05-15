@@ -3,7 +3,9 @@ package org.example.bankingsystemapi.mapper;
 import org.example.bankingsystemapi.model.dto.request.AccountRequestDto;
 import org.example.bankingsystemapi.model.dto.response.AccountResponseDto;
 import org.example.bankingsystemapi.model.entity.Account;
+import org.springframework.stereotype.Component;
 
+@Component
 public class AccountMapper {
 
     public Account toEntity(AccountRequestDto accountRequestDto) {
