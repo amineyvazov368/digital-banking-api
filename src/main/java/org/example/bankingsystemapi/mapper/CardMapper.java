@@ -4,10 +4,12 @@ import org.example.bankingsystemapi.model.dto.request.CardRequestDto;
 import org.example.bankingsystemapi.model.dto.response.CardResponseDto;
 import org.example.bankingsystemapi.model.entity.Account;
 import org.example.bankingsystemapi.model.entity.Card;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.util.Random;
 
+@Component
 public class CardMapper {
 
     public Card toEntity(CardRequestDto requestDto, Account account) {

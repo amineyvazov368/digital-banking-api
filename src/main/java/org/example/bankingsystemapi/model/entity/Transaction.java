@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.example.bankingsystemapi.model.enums.TransactionStatus;
+import org.example.bankingsystemapi.model.enums.TransactionType;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -33,6 +34,10 @@ public class Transaction {
     @Column(nullable = false)
     private BigDecimal amount;
 
+    @Enumerated(EnumType.STRING)
+    private TransactionType transactionType;
+
+    @Enumerated(EnumType.STRING)
     private TransactionStatus status;
 
     private String description;
@@ -42,6 +47,6 @@ public class Transaction {
     @PrePersist
     private void prePersist() {
         this.createdAt = LocalDateTime.now();
-        this.status = TransactionStatus.SUCCESS;
+        this.status = TransactionStatus.PENDING;
     }
 }

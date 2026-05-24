@@ -10,6 +10,7 @@ import org.example.bankingsystemapi.model.enums.Currency;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -28,14 +29,14 @@ public class Account {
     private String accountNumber;
 
     @Column(nullable = false)
-    private BigDecimal balance;
+    private BigDecimal balance=BigDecimal.ZERO;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @OneToMany(mappedBy = "account")
-    private List<Card> cards;
+    @OneToMany(mappedBy = "account", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Card> cards= new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
     private Currency currency;

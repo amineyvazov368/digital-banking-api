@@ -1,5 +1,6 @@
 package org.example.bankingsystemapi.service;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.example.bankingsystemapi.mapper.AccountMapper;
 import org.example.bankingsystemapi.model.dto.request.AccountRequestDto;
@@ -132,6 +133,33 @@ public class AccountService {
         account.setBalance(account.getBalance().subtract(amount));
         accountRepository.save(account);
         return "Withdraw successful";
+    }
+
+    @Transactional
+    public String transfer(Long fromAccountId, Long toAccountId, BigDecimal amount) {
+
+        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new RuntimeException("Amount must be greater than zero");
+        }
+
+        if (fromAccountId.equals(toAccountId)) {
+            throw new RuntimeException("Cannot transfer to same account");
+        }
+
+        Account fromAccount = accountRepository.findById(fromAccountId)
+                .orElseThrow(() -> new RuntimeException("Sender account not found"));
+
+        Account toAccount = accountRepository.findById(toAccountId)
+                .orElseThrow(() -> new RuntimeException("Receiver account not found"));
+
+        if (fromAccount.getBalance().compareTo(amount) < 0) {
+            throw new RuntimeException("Insufficient balance");
+        }
+        fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
+        toAccount.setBalance(toAccount.getBalance().add(amount));
+        accountRepository.save(fromAccount);
+        accountRepository.save(toAccount);
+        return "Transfer successful";
     }
 
 
