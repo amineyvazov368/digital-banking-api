@@ -4,7 +4,9 @@ import org.example.bankingsystemapi.model.dto.request.TransactionRequestDto;
 import org.example.bankingsystemapi.model.dto.response.TransactionResponseDto;
 import org.example.bankingsystemapi.model.entity.Account;
 import org.example.bankingsystemapi.model.entity.Transaction;
+import org.springframework.stereotype.Component;
 
+@Component
 public class TransactionMapper {
 
     public Transaction toEntity(TransactionRequestDto transactionRequestDto,

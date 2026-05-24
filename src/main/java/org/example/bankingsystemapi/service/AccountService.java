@@ -115,53 +115,6 @@ public class AccountService {
         }
     }
 
-    public String deposit(Long accountId, BigDecimal amount) {
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
-
-        account.setBalance(account.getBalance().add(amount));
-        accountRepository.save(account);
-        return "Deposit successful";
-    }
-
-    public String withdraw(Long accountId, BigDecimal amount) {
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
-        if (account.getBalance().compareTo(amount) < 0) {
-            throw new RuntimeException("Insufficient balance");}
-
-        account.setBalance(account.getBalance().subtract(amount));
-        accountRepository.save(account);
-        return "Withdraw successful";
-    }
-
-    @Transactional
-    public String transfer(Long fromAccountId, Long toAccountId, BigDecimal amount) {
-
-        if (amount.compareTo(BigDecimal.ZERO) < 0) {
-            throw new RuntimeException("Amount must be greater than zero");
-        }
-
-        if (fromAccountId.equals(toAccountId)) {
-            throw new RuntimeException("Cannot transfer to same account");
-        }
-
-        Account fromAccount = accountRepository.findById(fromAccountId)
-                .orElseThrow(() -> new RuntimeException("Sender account not found"));
-
-        Account toAccount = accountRepository.findById(toAccountId)
-                .orElseThrow(() -> new RuntimeException("Receiver account not found"));
-
-        if (fromAccount.getBalance().compareTo(amount) < 0) {
-            throw new RuntimeException("Insufficient balance");
-        }
-        fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
-        toAccount.setBalance(toAccount.getBalance().add(amount));
-        accountRepository.save(fromAccount);
-        accountRepository.save(toAccount);
-        return "Transfer successful";
-    }
-
 
     private String generateAccountNumber() {
 
