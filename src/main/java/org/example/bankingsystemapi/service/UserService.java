@@ -59,13 +59,14 @@ public class UserService {
 
         return userMapper.toResponseDto(savedUser);
     }
+
     public UserResponseDto loginUser(UserRequestDto userRequestDto) {
 
         User user = userRepository.findByEmail(userRequestDto.getEmail());
-        if (user == null){
+        if (user == null) {
             throw new RuntimeException("User not found");
         }
-        if(!passwordEncoder.matches(userRequestDto.getPassword(), user.getPassword())){
+        if (!passwordEncoder.matches(userRequestDto.getPassword(), user.getPassword())) {
             throw new RuntimeException("Wrong password");
         }
 
@@ -73,7 +74,7 @@ public class UserService {
             throw new RuntimeException("User is not active");
         }
 
-       UserResponseDto userResponseDto= userMapper.toResponseDto(user);
+        UserResponseDto userResponseDto = userMapper.toResponseDto(user);
         return userResponseDto;
     }
 

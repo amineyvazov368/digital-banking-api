@@ -106,8 +106,9 @@ public class AccountService {
             accountRepository.save(account);
         }
     }
+
     public void closeAccount(Long accountId) {
-        Account account =  accountRepository.findById(accountId)
+        Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new RuntimeException("Account not found"));
         if (account.getStatus() != AccountStatus.CLOSED) {
             account.setStatus(AccountStatus.CLOSED);

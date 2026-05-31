@@ -3,6 +3,7 @@ package org.example.bankingsystemapi.service;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.example.bankingsystemapi.mapper.TransactionMapper;
+import org.example.bankingsystemapi.model.dto.response.TransactionResponseDto;
 import org.example.bankingsystemapi.model.entity.Account;
 import org.example.bankingsystemapi.model.entity.Transaction;
 import org.example.bankingsystemapi.model.enums.TransactionStatus;
@@ -12,6 +13,7 @@ import org.example.bankingsystemapi.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +21,7 @@ public class TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
+    private final TransactionMapper transactionMapper;
 
     public String deposit(Long accountId, BigDecimal amount) {
         Account account = accountRepository.findById(accountId)
@@ -36,7 +39,6 @@ public class TransactionService {
         transactionRepository.save(transaction);
 
 
-
         return "Deposit successful";
     }
 
@@ -44,7 +46,8 @@ public class TransactionService {
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new RuntimeException("Account not found"));
         if (account.getBalance().compareTo(amount) < 0) {
-            throw new RuntimeException("Insufficient balance");}
+            throw new RuntimeException("Insufficient balance");
+        }
 
         account.setBalance(account.getBalance().subtract(amount));
         accountRepository.save(account);
@@ -100,10 +103,22 @@ public class TransactionService {
         return "Transfer successful";
     }
 
+    public List<TransactionResponseDto> getTransactionHistory(Long accountId) {
 
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
 
+        return transactionRepository.findBySendAccountIdOrReceiverAccountId(accountId, accountId)
+                .stream().map(transactionMapper::toDto).toList();
+    }
 
+    public TransactionResponseDto getTransactionById(Long transactionId) {
 
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new RuntimeException("Transaction not found"));
+
+        return transactionMapper.toDto(transaction);
+    }
 
 
 }
