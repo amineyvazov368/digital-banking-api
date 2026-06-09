@@ -1,5 +1,6 @@
 package org.example.bankingsystemapi.service;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.example.bankingsystemapi.mapper.CardMapper;
 import org.example.bankingsystemapi.model.dto.request.CardRequestDto;
@@ -11,6 +12,7 @@ import org.example.bankingsystemapi.repository.AccountRepository;
 import org.example.bankingsystemapi.repository.CardRepository;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Random;
@@ -52,6 +54,7 @@ public class CardService {
 
     }
 
+    @Transactional
     public void blockCard(Long cardId) {
         Card card = cardRepository.findById(cardId)
                 .orElseThrow(() -> new RuntimeException("Card not found"));
@@ -64,6 +67,7 @@ public class CardService {
 
     }
 
+    @Transactional
     public void activeCard(Long cardId) {
         Card card = cardRepository.findById(cardId)
                 .orElseThrow(() -> new RuntimeException("Card not found"));
@@ -76,7 +80,7 @@ public class CardService {
     }
 
     private String generateCardNumber() {
-        Random random = new Random();
+        Random random = new SecureRandom();
         String cardNumber;
 
         do {
@@ -93,7 +97,7 @@ public class CardService {
     }
 
     private String generateCVV() {
-        Random random = new Random();
+        Random random = new SecureRandom();
         int cvv = 100 + random.nextInt(900);
         return String.valueOf(cvv);
     }

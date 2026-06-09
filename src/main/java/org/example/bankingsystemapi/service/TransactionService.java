@@ -1,11 +1,12 @@
 package org.example.bankingsystemapi.service;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.example.bankingsystemapi.mapper.TransactionMapper;
 import org.example.bankingsystemapi.model.dto.response.TransactionResponseDto;
 import org.example.bankingsystemapi.model.entity.Account;
 import org.example.bankingsystemapi.model.entity.Transaction;
+import org.example.bankingsystemapi.model.enums.AccountStatus;
 import org.example.bankingsystemapi.model.enums.TransactionStatus;
 import org.example.bankingsystemapi.model.enums.TransactionType;
 import org.example.bankingsystemapi.repository.AccountRepository;
@@ -23,50 +24,87 @@ public class TransactionService {
     private final AccountRepository accountRepository;
     private final TransactionMapper transactionMapper;
 
+    @Transactional
     public String deposit(Long accountId, BigDecimal amount) {
+
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("Amount must be greater than zero");
+        }
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new RuntimeException("Account not found"));
 
-        account.setBalance(account.getBalance().add(amount));
-        accountRepository.save(account);
+        if (account.getStatus() != AccountStatus.ACTIVE) {
+            throw new RuntimeException("Account is not active");
+        }
 
         Transaction transaction = new Transaction();
         transaction.setReceiverAccount(account);
         transaction.setSendAccount(null);
         transaction.setAmount(amount);
         transaction.setTransactionType(TransactionType.DEPOSIT);
-        transaction.setStatus(TransactionStatus.SUCCESS);
+        transaction.setStatus(TransactionStatus.PENDING);
         transactionRepository.save(transaction);
 
+        try {
 
-        return "Deposit successful";
+            account.setBalance(account.getBalance().add(amount));
+            accountRepository.save(account);
+
+            transaction.setStatus(TransactionStatus.SUCCESS);
+            transactionRepository.save(transaction);
+
+            return "Deposit successful";
+        } catch (RuntimeException e) {
+            transaction.setStatus(TransactionStatus.FAILED);
+            transactionRepository.save(transaction);
+            throw e;
+        }
     }
 
+    @Transactional
     public String withdraw(Long accountId, BigDecimal amount) {
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
-        if (account.getBalance().compareTo(amount) < 0) {
-            throw new RuntimeException("Insufficient balance");
+
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("Amount must be greater than zero");
         }
 
-        account.setBalance(account.getBalance().subtract(amount));
-        accountRepository.save(account);
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+
+        if (account.getStatus() != AccountStatus.ACTIVE) {
+            throw new RuntimeException("Account is not active");
+        }
 
         Transaction transaction = new Transaction();
-        transaction.setReceiverAccount(account);
+        transaction.setSendAccount(account);
         transaction.setReceiverAccount(null);
         transaction.setAmount(amount);
         transaction.setTransactionType(TransactionType.WITHDRAW);
-        transaction.setStatus(TransactionStatus.SUCCESS);
+        transaction.setStatus(TransactionStatus.PENDING);
         transactionRepository.save(transaction);
 
-        return "Withdraw successful";
+        try {
+            if (account.getBalance().compareTo(amount) < 0) {
+                throw new RuntimeException("Insufficient balance");
+            }
+            account.setBalance(account.getBalance().subtract(amount));
+            accountRepository.save(account);
+            transaction.setStatus(TransactionStatus.SUCCESS);
+            transactionRepository.save(transaction);
+
+            return "Withdraw successful";
+        } catch (RuntimeException e) {
+            transaction.setStatus(TransactionStatus.FAILED);
+            transactionRepository.save(transaction);
+            throw e;
+        }
+
     }
 
     @Transactional
     public String transfer(Long fromAccountId, Long toAccountId, BigDecimal amount) {
 
-        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new RuntimeException("Amount must be greater than zero");
         }
 
@@ -80,33 +118,51 @@ public class TransactionService {
         Account toAccount = accountRepository.findById(toAccountId)
                 .orElseThrow(() -> new RuntimeException("Receiver account not found"));
 
-        if (fromAccount.getBalance().compareTo(amount) < 0) {
-            throw new RuntimeException("Insufficient balance");
+        if (fromAccount.getStatus() != AccountStatus.ACTIVE) {
+            throw new RuntimeException("Account is not active");
         }
-        fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
-        toAccount.setBalance(toAccount.getBalance().add(amount));
-        accountRepository.save(fromAccount);
-        accountRepository.save(toAccount);
+
+        if (toAccount.getStatus() != AccountStatus.ACTIVE) {
+            throw new RuntimeException("Account is not active");
+        }
         Transaction transaction = new Transaction();
         transaction.setSendAccount(fromAccount);
         transaction.setReceiverAccount(toAccount);
         transaction.setAmount(amount);
         transaction.setTransactionType(TransactionType.TRANSFER);
-        transaction.setStatus(TransactionStatus.SUCCESS);
+        transaction.setStatus(TransactionStatus.PENDING);
         transaction.setDescription(
                 "Transfer from " + fromAccount.getAccountNumber()
                         + " to " + toAccount.getAccountNumber()
         );
         transactionRepository.save(transaction);
 
+        try {
 
-        return "Transfer successful";
+            if (fromAccount.getBalance().compareTo(amount) < 0) {
+                throw new RuntimeException("Insufficient balance");
+            }
+            fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
+            toAccount.setBalance(toAccount.getBalance().add(amount));
+            accountRepository.save(fromAccount);
+            accountRepository.save(toAccount);
+
+            transaction.setStatus(TransactionStatus.SUCCESS);
+            transactionRepository.save(transaction);
+            return "Transfer successful";
+        } catch (Exception e) {
+            transaction.setStatus(TransactionStatus.FAILED);
+            transactionRepository.save(transaction);
+
+            throw new RuntimeException("Transfer failed");
+        }
     }
 
     public List<TransactionResponseDto> getTransactionHistory(Long accountId) {
 
-        Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+        if (!accountRepository.existsById(accountId)) {
+            throw new RuntimeException("Account not found");
+        }
 
         return transactionRepository.findBySendAccountIdOrReceiverAccountId(accountId, accountId)
                 .stream().map(transactionMapper::toDto).toList();
@@ -118,6 +174,25 @@ public class TransactionService {
                 .orElseThrow(() -> new RuntimeException("Transaction not found"));
 
         return transactionMapper.toDto(transaction);
+    }
+
+    public List<TransactionResponseDto> getAllTransactions() {
+        return transactionRepository.findAll()
+                .stream().map(transactionMapper::toDto)
+                .toList();
+    }
+
+    public List<TransactionResponseDto> getTransactionsByStatus(TransactionStatus status) {
+        return transactionRepository.findByStatus(status)
+                .stream().map(transactionMapper::toDto)
+                .toList();
+
+    }
+
+    public List<TransactionResponseDto> getTransactionsByTransactionType(TransactionType transactionType) {
+        return transactionRepository.findByTransactionType(transactionType)
+                .stream().map(transactionMapper::toDto)
+                .toList();
     }
 
 
