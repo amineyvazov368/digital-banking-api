@@ -11,6 +11,7 @@ import org.example.bankingsystemapi.model.enums.UserStatus;
 import org.example.bankingsystemapi.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -43,7 +44,10 @@ public class UserService {
 //
 //    }
 
+    @Transactional
     public UserResponseDto registerUser(UserRequestDto userRequestDto) {
+
+        validateRegisterRequest(userRequestDto);
 
         if (userRepository.existsByEmail(userRequestDto.getEmail())) {
             throw new RuntimeException("Email already exists");
@@ -55,11 +59,12 @@ public class UserService {
 
         User savedUser = userRepository.save(user);
 
-        accountService.createDefaultAccount(savedUser);
+        accountService.createDefaultAccount(savedUser.getId());
 
         return userMapper.toResponseDto(savedUser);
     }
 
+    @Transactional
     public UserResponseDto loginUser(UserRequestDto userRequestDto) {
 
         User user = userRepository.findByEmail(userRequestDto.getEmail());
@@ -93,7 +98,9 @@ public class UserService {
 
     public void deleteUserById(Long id) {
         User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
-        userRepository.delete(user);
+        user.setUserStatus(UserStatus.BLOCKED);
+        userRepository.save(user);
+
     }
 
     public UserResponseDto updateUser(Long id, UserRequestDto userRequestDto) {
@@ -106,6 +113,21 @@ public class UserService {
         return userMapper.toResponseDto(userRepository.save(user));
 
 
+    }
+
+    private void validateRegisterRequest(UserRequestDto request) {
+
+        if (request.getEmail() == null || request.getEmail().isBlank()) {
+            throw new RuntimeException("Email cannot be empty");
+        }
+
+        if (request.getPassword() == null || request.getPassword().length() < 6) {
+            throw new RuntimeException("Password must be at least 6 characters");
+        }
+
+        if (request.getName() == null || request.getName().isBlank()) {
+            throw new RuntimeException("Name cannot be empty");
+        }
     }
 
 

@@ -42,7 +42,10 @@ public class AccountService {
 
     }
 
-    public void createDefaultAccount(User user) {
+    public void createDefaultAccount(Long userId) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         Account account = new Account();
 
@@ -53,6 +56,13 @@ public class AccountService {
         account.setStatus(AccountStatus.ACTIVE);
 
         accountRepository.save(account);
+    }
+
+    @Transactional(readOnly = true)
+    public BigDecimal getBalance(Long accountİd) {
+        Account account = accountRepository.findById(accountİd)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+        return account.getBalance();
     }
 
     @Transactional(readOnly = true)

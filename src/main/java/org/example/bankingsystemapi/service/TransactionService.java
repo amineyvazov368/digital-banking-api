@@ -1,5 +1,7 @@
 package org.example.bankingsystemapi.service;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.example.bankingsystemapi.mapper.TransactionMapper;
@@ -158,13 +160,15 @@ public class TransactionService {
         }
     }
 
-    public List<TransactionResponseDto> getTransactionHistory(Long accountId) {
+    public List<TransactionResponseDto> getTransactionHistory(Long accountId, int limit) {
 
         if (!accountRepository.existsById(accountId)) {
             throw new RuntimeException("Account not found");
         }
 
-        return transactionRepository.findBySendAccountIdOrReceiverAccountId(accountId, accountId)
+        Pageable pageable = PageRequest.of(0,limit);
+
+        return transactionRepository.findBySendAccountIdOrReceiverAccountIdOrderByCreatedAtDesc(accountId, accountId,pageable)
                 .stream().map(transactionMapper::toDto).toList();
     }
 
