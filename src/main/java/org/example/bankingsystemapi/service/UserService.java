@@ -2,6 +2,7 @@ package org.example.bankingsystemapi.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.bankingsystemapi.mapper.UserMapper;
+import org.example.bankingsystemapi.model.dto.request.LoginRequest;
 import org.example.bankingsystemapi.model.dto.request.UserRequestDto;
 import org.example.bankingsystemapi.model.dto.response.UserResponseDto;
 import org.example.bankingsystemapi.model.entity.Account;
@@ -65,13 +66,13 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponseDto loginUser(UserRequestDto userRequestDto) {
+    public UserResponseDto loginUser(LoginRequest loginRequest) {
 
-        User user = userRepository.findByEmail(userRequestDto.getEmail());
+        User user = userRepository.findByEmail(loginRequest.getEmail());
         if (user == null) {
             throw new RuntimeException("User not found");
         }
-        if (!passwordEncoder.matches(userRequestDto.getPassword(), user.getPassword())) {
+        if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
             throw new RuntimeException("Wrong password");
         }
 
