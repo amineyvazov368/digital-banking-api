@@ -97,7 +97,7 @@ public class UserService {
 
     }
 
-    public void deleteUserById(Long id) {
+    public void blockUserById(Long id) {
         User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
         user.setUserStatus(UserStatus.BLOCKED);
         userRepository.save(user);
@@ -107,13 +107,38 @@ public class UserService {
     public UserResponseDto updateUser(Long id, UserRequestDto userRequestDto) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        User existingUser = userRepository.findByEmail(userRequestDto.getEmail());
+
+        if (existingUser != null && !existingUser.getId().equals(id)) {
+            throw new RuntimeException("Email already exists");
+        }
         user.setName(userRequestDto.getName());
         user.setSurname(userRequestDto.getSurname());
         user.setEmail(userRequestDto.getEmail());
-        user.setPassword(passwordEncoder.encode(userRequestDto.getPassword()));
+
+        if (userRequestDto.getPassword() != null && !userRequestDto.getPassword().isBlank()) {
+            user.setPassword(passwordEncoder.encode(userRequestDto.getPassword()));
+        }
+
         return userMapper.toResponseDto(userRepository.save(user));
 
 
+    }
+
+    @Transactional
+    public void activateUser(Long id) {
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getUserStatus() == UserStatus.ACTIVE) {
+            throw new RuntimeException("User is already active");
+        }
+
+        user.setUserStatus(UserStatus.ACTIVE);
+
+        userRepository.save(user);
     }
 
     private void validateRegisterRequest(UserRequestDto request) {
