@@ -24,11 +24,11 @@ public class Transaction {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(nullable = false, name = "send_account_id")
+    @JoinColumn(name = "send_account_id")
     private Account sendAccount;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(nullable = false, name = "receiver_account_id")
+    @JoinColumn(name = "receiver_account_id")
     private Account receiverAccount;
 
     @Column(nullable = false)

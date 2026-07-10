@@ -35,8 +35,6 @@ public class AccountService {
         account.setAccountNumber(generateAccountNumber());
         account.setBalance(BigDecimal.ZERO);
         account.setCurrency(accountRequestDto.getCurrency());
-        Card card = new Card();
-        account.setCards(List.of(card));
         Account savedAccount = accountRepository.save(account);
         return accountMapper.toDto(savedAccount);
 

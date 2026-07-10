@@ -5,22 +5,19 @@ import org.example.bankingsystemapi.model.dto.request.UserRequestDto;
 import org.example.bankingsystemapi.model.dto.response.AccountResponseDto;
 import org.example.bankingsystemapi.model.dto.response.UserResponseDto;
 import org.example.bankingsystemapi.model.entity.User;
-import org.example.bankingsystemapi.model.enums.Role;
-import org.example.bankingsystemapi.model.enums.UserStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Component
 @RequiredArgsConstructor
 public class UserMapper {
 
-    private AccountMapper accountMapper;
-    private PasswordEncoder passwordEncoder;
+    private final AccountMapper accountMapper;
+    private final PasswordEncoder passwordEncoder;
 
-    public User toEntity(UserRequestDto userRequestDto){
+    public User toEntity(UserRequestDto userRequestDto) {
         User user = new User();
         user.setName(userRequestDto.getName());
         user.setSurname(userRequestDto.getSurname());
@@ -30,17 +27,20 @@ public class UserMapper {
 
     }
 
-    public UserResponseDto toResponseDto(User user){
+    public UserResponseDto toResponseDto(User user) {
         UserResponseDto userResponseDto = new UserResponseDto();
         userResponseDto.setName(user.getName());
         userResponseDto.setSurname(user.getSurname());
         userResponseDto.setEmail(user.getEmail());
         userResponseDto.setRole(user.getRole());
 
+        userResponseDto.setUserStatus(user.getUserStatus());
+        userResponseDto.setCreatedAt(user.getCreatedAt());
+
         List<AccountResponseDto> accountResponseDtoList =
                 user.getAccounts() == null
                         ? List.of()
-               : user.getAccounts().stream()
+                        : user.getAccounts().stream()
                         .map(accountMapper::toDto)
                         .toList();
 

@@ -37,13 +37,10 @@ public class CardService {
             throw new RuntimeException("Card limit reached");
         }
 
-        Card card = new Card();
-        card.setAccount(account);
+        Card card = cardMapper.toEntity(cardRequestDto, account);
         card.setCardNumber(generateCardNumber());
         card.setCvv(generateCVV());
         card.setExpiryDate(generateExpiryDate());
-        card.setCardStatus(CardStatus.ACTIVE);
-        card.setCardType(cardRequestDto.getCardType());
         Card saveCard = cardRepository.save(card);
         return cardMapper.toDto(saveCard);
     }
@@ -135,7 +132,7 @@ public class CardService {
 
     }
 
-    private String generateCardNumber() {
+    public String generateCardNumber() {
         SecureRandom random = new SecureRandom();
         String cardNumber;
 
@@ -152,13 +149,13 @@ public class CardService {
         return cardNumber;
     }
 
-    private String generateCVV() {
+    public String generateCVV() {
         Random random = new SecureRandom();
         int cvv = 100 + random.nextInt(900);
         return String.valueOf(cvv);
     }
 
-    private LocalDate generateExpiryDate() {
+    public LocalDate generateExpiryDate() {
         return LocalDate.now().plusYears(4);
     }
 

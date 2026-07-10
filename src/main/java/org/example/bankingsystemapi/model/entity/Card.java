@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.example.bankingsystemapi.model.enums.CardForm;
 import org.example.bankingsystemapi.model.enums.CardStatus;
 import org.example.bankingsystemapi.model.enums.CardType;
 
@@ -38,6 +39,9 @@ public class Card {
 
     @Enumerated(EnumType.STRING)
     private CardType cardType;
+
+    @Enumerated(EnumType.STRING)
+    private CardForm cardForm;
 
     @Enumerated(EnumType.STRING)
     private CardStatus cardStatus;
