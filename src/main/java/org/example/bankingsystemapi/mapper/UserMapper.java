@@ -15,14 +15,13 @@ import java.util.List;
 public class UserMapper {
 
     private final AccountMapper accountMapper;
-    private final PasswordEncoder passwordEncoder;
 
     public User toEntity(UserRequestDto userRequestDto) {
         User user = new User();
         user.setName(userRequestDto.getName());
         user.setSurname(userRequestDto.getSurname());
         user.setEmail(userRequestDto.getEmail());
-        user.setPassword(passwordEncoder.encode(userRequestDto.getPassword()));
+        user.setPassword(userRequestDto.getPassword());
         return user;
 
     }

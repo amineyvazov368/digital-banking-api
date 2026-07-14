@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.bankingsystemapi.model.dto.request.LoginRequest;
 import org.example.bankingsystemapi.model.dto.request.UserRequestDto;
+import org.example.bankingsystemapi.model.dto.response.LoginResponseDto;
 import org.example.bankingsystemapi.model.dto.response.UserResponseDto;
 import org.example.bankingsystemapi.service.UserService;
 import org.springframework.http.HttpStatus;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
+//@CrossOrigin(origins = "http://localhost:5175/")
 public class UserController {
 
     private final UserService userService;
@@ -25,9 +27,9 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<UserResponseDto> loginUser(@RequestBody @Valid LoginRequest loginRequest) {
-        UserResponseDto login = userService.loginUser(loginRequest);
-        return ResponseEntity.ok(login);
+    public ResponseEntity<LoginResponseDto> loginUser(@RequestBody @Valid LoginRequest loginRequest) {
+       return ResponseEntity.ok(userService.loginUser(loginRequest));
+
 
     }
 

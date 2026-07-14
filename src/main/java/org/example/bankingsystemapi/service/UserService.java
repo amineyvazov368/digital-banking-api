@@ -4,18 +4,23 @@ import lombok.RequiredArgsConstructor;
 import org.example.bankingsystemapi.mapper.UserMapper;
 import org.example.bankingsystemapi.model.dto.request.LoginRequest;
 import org.example.bankingsystemapi.model.dto.request.UserRequestDto;
+import org.example.bankingsystemapi.model.dto.response.LoginResponseDto;
 import org.example.bankingsystemapi.model.dto.response.UserResponseDto;
 import org.example.bankingsystemapi.model.entity.Account;
 import org.example.bankingsystemapi.model.entity.User;
 import org.example.bankingsystemapi.model.enums.Currency;
 import org.example.bankingsystemapi.model.enums.UserStatus;
 import org.example.bankingsystemapi.repository.UserRepository;
+import org.example.bankingsystemapi.security.JwtService;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +30,9 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
     private final AccountService accountService;
+    private final JwtService jwtService;
+    private final UserResponseDto userResponseDto;
+    private final AuthenticationManager authenticationManager;
 
 
 //    public UserResponseDto registerUser(UserRequestDto userRequestDto) {
@@ -65,10 +73,11 @@ public class UserService {
         return userMapper.toResponseDto(savedUser);
     }
 
-    @Transactional
-    public UserResponseDto loginUser(LoginRequest loginRequest) {
+    @Transactional(readOnly = true)
+    public LoginResponseDto loginUser(LoginRequest loginRequest) {
 
         User user = userRepository.findByEmail(loginRequest.getEmail());
+
         if (user == null) {
             throw new RuntimeException("User not found");
         }
@@ -80,8 +89,15 @@ public class UserService {
             throw new RuntimeException("User is not active");
         }
 
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
+
+        String accessToken = jwtService.generateAccessToken(user.getId(), user.getEmail());
+        String refreshToken = jwtService.generateRefreshToken(user.getId(), user.getEmail());
+
         UserResponseDto userResponseDto = userMapper.toResponseDto(user);
-        return userResponseDto;
+        return new LoginResponseDto(userResponseDto,accessToken,refreshToken);
+
     }
 
     public List<UserResponseDto> getAllUsers() {
