@@ -11,11 +11,11 @@ import java.math.BigDecimal;
 @Data
 public class TransactionRequestDto {
 
-    @NotBlank(message = "Sender account is required")
-    private String senderAccountNumber;
+    @NotBlank(message = "Sender cardNumber is required")
+    private String fromCardNumber;
 
-    @NotBlank(message = "Receiver account is required")
-    private String receiverAccountNumber;
+    @NotBlank(message = "Receiver cardNumber is required")
+    private String toCardNumber;
 
     @NotNull(message = "Amount is required")
     @DecimalMin(value = "1.0", message = "Amount must be greater than 0")

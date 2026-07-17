@@ -1,9 +1,12 @@
 package org.example.bankingsystemapi.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.example.bankingsystemapi.model.dto.request.TransactionRequestDto;
 import org.example.bankingsystemapi.model.dto.response.TransactionResponseDto;
 import org.example.bankingsystemapi.service.TransactionService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -18,43 +21,66 @@ public class UserTransactionController {
 
     @PostMapping("/deposit")
     public ResponseEntity<String> deposit(
-            @RequestParam Long accountId,
-            @RequestParam BigDecimal amount) {
-
+            @RequestBody TransactionRequestDto request) {
         return ResponseEntity.ok(
-                transactionService.deposit(accountId, amount)
+                transactionService.deposit(
+                        request.getToCardNumber(),
+                        request.getAmount()
+                )
         );
     }
 
     @PostMapping("/withdraw")
     public ResponseEntity<String> withdraw(
-            @RequestParam Long accountId,
-            @RequestParam BigDecimal amount) {
-
+            @RequestBody TransactionRequestDto request) {
         return ResponseEntity.ok(
-                transactionService.withdraw(accountId, amount)
+                transactionService.withdraw(
+                        request.getFromCardNumber(),
+                        request.getAmount()
+                )
         );
     }
 
     @PostMapping("/transfer")
     public ResponseEntity<String> transfer(
-            @RequestParam Long fromAccountId,
-            @RequestParam Long toAccountId,
-            @RequestParam BigDecimal amount) {
+            @RequestBody TransactionRequestDto transactionRequestDto) {
 
         return ResponseEntity.ok(
-                transactionService.transfer(fromAccountId, toAccountId, amount)
+                transactionService.transferByCardNumber(
+                        transactionRequestDto.getFromCardNumber(),
+                        transactionRequestDto.getToCardNumber(),
+                        transactionRequestDto.getAmount())
         );
     }
 
-    @GetMapping("/history/{accountId}")
-    public ResponseEntity<List<TransactionResponseDto>> getHistory(
-            @PathVariable Long accountId,
+//    @GetMapping("/history/{accountId}")
+//    public ResponseEntity<List<TransactionResponseDto>> getHistory(
+//            @PathVariable Long accountId,
+//            @RequestParam(required = false) String type,
+//            @RequestParam(required = false) String search,
+//            @RequestParam(defaultValue = "10") int limit) {
+//
+//        return ResponseEntity.ok(
+//                transactionService.getTransactionHistory(accountId, limit)
+//        );
+//    }
+
+    @GetMapping("/history/my")
+    public ResponseEntity<List<TransactionResponseDto>> getMyTransactionHistory(
+            Authentication authentication,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "10") int limit) {
 
-        return ResponseEntity.ok(
-                transactionService.getTransactionHistory(accountId, limit)
-        );
+        if (authentication == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        // Daxil olan istifadəçinin email-i (və ya username-i)
+        String email = authentication.getName();
+
+        List<TransactionResponseDto> history = transactionService.getMyTransactionHistory(email, type, search, limit);
+        return ResponseEntity.ok(history);
     }
 
     @GetMapping("/{transactionId}")

@@ -1,11 +1,15 @@
 package org.example.bankingsystemapi.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.Value;
 import org.example.bankingsystemapi.model.dto.request.CardRequestDto;
 import org.example.bankingsystemapi.model.dto.response.CardResponseDto;
 import org.example.bankingsystemapi.service.CardService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,6 +17,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/cards")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "http://localhost:5173", allowCredentials = "true")
 public class UserCardController {
 
     private final CardService cardService;
@@ -20,7 +25,7 @@ public class UserCardController {
     @PostMapping("/{accountId}")
     public ResponseEntity<CardResponseDto> createCard(
             @PathVariable Long accountId,
-            @RequestBody CardRequestDto requestDto) {
+           @Valid @RequestBody CardRequestDto requestDto) {
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(cardService.createCard(accountId, requestDto));

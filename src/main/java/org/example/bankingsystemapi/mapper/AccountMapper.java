@@ -20,6 +20,7 @@ public class AccountMapper {
 
     public AccountResponseDto toDto(Account account) {
         AccountResponseDto accountResponseDto = new AccountResponseDto();
+        accountResponseDto.setId(account.getId());
         accountResponseDto.setAccountNumber(account.getAccountNumber());
         accountResponseDto.setBalance(account.getBalance());
         accountResponseDto.setCurrency(account.getCurrency());

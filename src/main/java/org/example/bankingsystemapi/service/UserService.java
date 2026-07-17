@@ -3,8 +3,10 @@ package org.example.bankingsystemapi.service;
 import lombok.RequiredArgsConstructor;
 import org.example.bankingsystemapi.mapper.UserMapper;
 import org.example.bankingsystemapi.model.dto.request.LoginRequest;
+import org.example.bankingsystemapi.model.dto.request.RefreshTokenRequest;
 import org.example.bankingsystemapi.model.dto.request.UserRequestDto;
 import org.example.bankingsystemapi.model.dto.response.LoginResponseDto;
+import org.example.bankingsystemapi.model.dto.response.RefreshTokenResponse;
 import org.example.bankingsystemapi.model.dto.response.UserResponseDto;
 import org.example.bankingsystemapi.model.entity.Account;
 import org.example.bankingsystemapi.model.entity.User;
@@ -96,7 +98,30 @@ public class UserService {
         String refreshToken = jwtService.generateRefreshToken(user.getId(), user.getEmail());
 
         UserResponseDto userResponseDto = userMapper.toResponseDto(user);
-        return new LoginResponseDto(userResponseDto,accessToken,refreshToken);
+        return new LoginResponseDto(user.getId(),userResponseDto,accessToken,refreshToken);
+
+    }
+
+    private final java.util.Set<String> tokenBlacklist = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
+
+    public void logout(String authHeader){
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String accessToken = authHeader.substring(7);
+            tokenBlacklist.add(accessToken);
+        }
+    }
+
+    public RefreshTokenResponse refresh(RefreshTokenRequest request) {
+        String refreshToken = request.refreshToken();
+
+        if (!jwtService.isValid(refreshToken)) {
+            throw new RuntimeException("Refresh token is invalid");
+        }
+        Long userId = jwtService.extractUserId(refreshToken);
+        String userName = jwtService.extractEmail(refreshToken);
+
+        String newAccessToken = jwtService.generateAccessToken(userId, userName);
+        return new RefreshTokenResponse(newAccessToken, refreshToken);
 
     }
 

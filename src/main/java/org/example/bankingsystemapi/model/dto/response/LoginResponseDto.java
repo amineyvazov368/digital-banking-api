@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LoginResponseDto {
+    private Long id;
     private UserResponseDto userResponseDto;
     private String accessToken;
     private String refreshToken;

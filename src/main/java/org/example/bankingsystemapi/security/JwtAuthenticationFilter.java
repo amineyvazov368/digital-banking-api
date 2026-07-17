@@ -1,4 +1,4 @@
-package org.example.bankingsystemapi.security; // Öz paket adına diqqət et
+package org.example.bankingsystemapi.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -27,29 +27,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String userEmail;
 
-        // 1. "Authorization" başlığını (header) yoxlayırıq. Boşdursa və ya "Bearer " ilə başlamırsa, növbəti filtrə keçirik.
+        // 1. "Authorization" yoxlaması
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 2. "Bearer " sözünü kəsib yalnız token hissəsini alırıq
-        jwt = authHeader.substring(7);
+        // 2. Tokeni təhlükəsiz şəkildə götürürük (boşluqları təmizləyirik - trim())
+        final String jwt = authHeader.substring(7).trim();
 
         try {
             // 3. Tokendən email-i çıxarırıq
-            userEmail = jwtService.extractEmail(jwt);
+            final String userEmail = jwtService.extractEmail(jwt);
 
-            // 4. Əgər email tapılıbsa və istifadəçi artıq sistemə daxil edilməyibsə (SecurityContext boşdursa)
+            // 4. Əgər email tapılıbsa və hələ giriş edilməyibsə
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-
-                // Bazadan (və ya yaddaşdan) istifadəçi detallarını yükləyirik
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
-                // Tokenin etibarlı (valid) olub-olmadığını yoxlayırıq
                 if (jwtService.isValid(jwt)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
@@ -58,16 +53,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                    // Spring Security-yə deyirik ki, "Bu istifadəçi artıq təsdiqləndi!"
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }
         } catch (Exception e) {
-            // Token xətalı olduqda (məsələn vaxtı keçdikdə) filter zənciri qırılmasın deyə loglaya və ya xəta verə bilərsən
-            logger.error("JWT doğrulama xətası: " + e.getMessage());
+            // Əgər token xətalıdırsa (vaxtı keçibsə və ya JWE xətası verirsə)
+            // Bu loq bizə tam olaraq hansı tokenin xəta verdiyini göstərəcək
+            logger.error("JWT validation failed for token: [" + jwt + "] | Error: " + e.getMessage());
+
+            // Xəta halında istifadəçini anonim saxlayırıq və istəsən 401 qaytara bilərsən.
+            // Hələlik filter zəncirini davam etdirək, Spring özü 403/401 verəcək.
         }
 
-        // 5. Sorğunu növbəti filtrə ötürürük
         filterChain.doFilter(request, response);
     }
 }
