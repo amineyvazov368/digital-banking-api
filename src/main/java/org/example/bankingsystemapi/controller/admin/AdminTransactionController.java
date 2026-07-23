@@ -51,7 +51,7 @@ public class AdminTransactionController {
             @PathVariable TransactionType type) {
 
         return ResponseEntity.ok(
-                transactionService.getTransactionsByTransactionType(type)
+                transactionService.getMyTransactionsByType(type)
         );
     }
 

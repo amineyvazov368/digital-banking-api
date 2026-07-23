@@ -12,9 +12,18 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
 
     Optional<Account> findByAccountNumber(String accountNumber);
 
+    List<Account> findByUserEmailAndStatus(String email, AccountStatus status);
+    long countByUserEmailAndStatus(String email, AccountStatus status);
+
     Optional<Account> findByCardsCardNumber(String cardNumber);
+
+    List<Account> findByUserId(Long userId);
 
     List<Account> findAccountByUserId(Long userId);
 
     List<Account> findAccountsByStatus(AccountStatus status);
+
+    boolean existsByIdAndUserEmail(Long id, String email);
+
+    Long countByUserEmail(String email);
 }

@@ -1,15 +1,21 @@
 package org.example.bankingsystemapi.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.bankingsystemapi.exceptions.BadRequestException;
+import org.example.bankingsystemapi.exceptions.ForbiddenException;
+import org.example.bankingsystemapi.exceptions.NotFoundException;
 import org.example.bankingsystemapi.mapper.CardMapper;
 import org.example.bankingsystemapi.model.dto.request.CardRequestDto;
+import org.example.bankingsystemapi.model.dto.response.CardOwnerDto;
 import org.example.bankingsystemapi.model.dto.response.CardResponseDto;
 import org.example.bankingsystemapi.model.entity.Account;
 import org.example.bankingsystemapi.model.entity.Card;
+import org.example.bankingsystemapi.model.entity.User;
 import org.example.bankingsystemapi.model.enums.AccountStatus;
 import org.example.bankingsystemapi.model.enums.CardStatus;
 import org.example.bankingsystemapi.repository.AccountRepository;
 import org.example.bankingsystemapi.repository.CardRepository;
+import org.example.bankingsystemapi.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,16 +31,18 @@ public class CardService {
     private final CardRepository cardRepository;
     private final CardMapper cardMapper;
     private final AccountRepository accountRepository;
+    private final UserRepository userRepository;
 
     public CardResponseDto createCard(Long accountId, CardRequestDto cardRequestDto) {
         Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+                .orElseThrow(() -> new NotFoundException("Account not found" + accountId));
 
         if (account.getStatus() != AccountStatus.ACTIVE) {
-            throw new RuntimeException("Account is not active");
+            throw new BadRequestException("Account is not active");
         }
-        if (account.getCards().size() >= 3) {
-            throw new RuntimeException("Card limit reached");
+        long cardCount = cardRepository.countByAccountAndCardStatus(account, CardStatus.ACTIVE);
+        if (cardCount >= 3) {
+            throw new BadRequestException("Card count exceeds 3");
         }
 
         Card card = cardMapper.toEntity(cardRequestDto, account);
@@ -48,33 +56,43 @@ public class CardService {
     @Transactional(readOnly = true)
     public CardResponseDto getCardById(Long id) {
         Card card = cardRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Card not found"));
+                .orElseThrow(() -> new NotFoundException("Card not found"+ id));
         return cardMapper.toDto(card);
     }
 
     @Transactional(readOnly = true)
     public List<CardResponseDto> getCardsByAccountId(Long accountId) {
         Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+                .orElseThrow(() -> new NotFoundException("Account not found"+ accountId));
+        List<CardStatus> allowStatus = List.of(CardStatus.ACTIVE,CardStatus.BLOCKED);
 
-        return cardRepository.findCardsByAccount(account)
+        return cardRepository.findCardsByAccountAndCardStatusIn(account,allowStatus)
                 .stream().map(cardMapper::toDto).toList();
 
     }
 
     @Transactional(readOnly = true)
+    public List<CardResponseDto> getCardsByAccountIdAndStatus(Long accountId) {
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new NotFoundException("Account not found" + accountId));
+
+        return cardRepository.findCardsByAccountAndCardStatus(account,CardStatus.BLOCKED)
+                .stream().map(cardMapper::toDto).toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<CardResponseDto> getActiveCardByAccountId(Long accountId) {
         Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+                .orElseThrow(() -> new NotFoundException("Account not found" + accountId));
         return cardRepository.findActiveCardsByAccount(account)
                 .stream().map(cardMapper::toDto)
                 .toList();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional()
     public void deleteCardById(Long cardId, Long userId) {
         Card card = cardRepository.findById(cardId)
-                .orElseThrow(() -> new RuntimeException("Card not found"));
+                .orElseThrow(() -> new NotFoundException("Card not found"+ cardId));
         validateOwnership(card, userId);
 
         card.setCardStatus(CardStatus.CLOSED);
@@ -85,11 +103,11 @@ public class CardService {
     @Transactional
     public void blockCard(Long cardId, Long userId) {
         Card card = cardRepository.findById(cardId)
-                .orElseThrow(() -> new RuntimeException("Card not found"));
+                .orElseThrow(() -> new NotFoundException("Card not found"+ cardId));
         validateOwnership(card, userId);
 
         if (card.getCardStatus() == CardStatus.BLOCKED) {
-            throw new RuntimeException("Card is already blocked");
+            throw new BadRequestException("Card is already blocked");
         }
         card.setCardStatus(CardStatus.BLOCKED);
         cardRepository.save(card);
@@ -99,20 +117,21 @@ public class CardService {
     @Transactional
     public void activeCard(Long cardId, Long userId) {
         Card card = cardRepository.findById(cardId)
-                .orElseThrow(() -> new RuntimeException("Card not found"));
+                .orElseThrow(() -> new NotFoundException("Card not found"+ cardId));
 
         validateOwnership(card, userId);
 
         if (card.getCardStatus() == CardStatus.ACTIVE) {
-            throw new RuntimeException("Card is already active");
+            throw new BadRequestException("Card is already active");
         }
         card.setCardStatus(CardStatus.ACTIVE);
         cardRepository.save(card);
     }
 
+    @Transactional
     public CardResponseDto replaceCard(Long cardId, Long userId) {
         Card oldCard = cardRepository.findById(cardId)
-                .orElseThrow(() -> new RuntimeException("Card not found"));
+                .orElseThrow(() -> new NotFoundException("Card not found" + cardId));
 
         validateOwnership(oldCard,userId);
 
@@ -130,6 +149,33 @@ public class CardService {
 
         return cardMapper.toDto(cardRepository.save(newCard));
 
+    }
+
+    public List<CardResponseDto> getCardsByUsername(String username) {
+        User user = userRepository.findByEmail(username); // və ya findByUsername
+        if (user == null) {
+            throw new NotFoundException("User not found" + username);
+        }
+
+        List<CardStatus> allowStatus = List.of(CardStatus.ACTIVE,CardStatus.BLOCKED);
+
+        List<Card> cards = cardRepository.findByAccount_User_IdAndCardStatusIn(user.getId(),allowStatus);
+
+        return cards.stream()
+                .map(cardMapper::toDto)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public CardOwnerDto getCardOwnerByNumber(String cardNumber) {
+        Card card = cardRepository.findCardWithUserByCardNumber(cardNumber)
+                .orElseThrow(() -> new NotFoundException("Kart tapılmadı: " + cardNumber));
+
+        User user = card.getAccount().getUser();
+
+        String fullName = (user.getName() + " " + (user.getSurname() != null ? user.getSurname() : "")).trim();
+
+        return new CardOwnerDto(card.getCardNumber(), fullName);
     }
 
     public String generateCardNumber() {
@@ -161,7 +207,7 @@ public class CardService {
 
     private void validateOwnership(Card card, Long userId) {
         if (!card.getAccount().getUser().getId().equals(userId)) {
-            throw new RuntimeException("Unauthorized");
+            throw new ForbiddenException("Unauthorized"+ card.getId());
         }
     }
 

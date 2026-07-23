@@ -1,6 +1,9 @@
 package org.example.bankingsystemapi.service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.bankingsystemapi.exceptions.AlreadyExistsException;
+import org.example.bankingsystemapi.exceptions.BadRequestException;
+import org.example.bankingsystemapi.exceptions.NotFoundException;
 import org.example.bankingsystemapi.mapper.UserMapper;
 import org.example.bankingsystemapi.model.dto.request.LoginRequest;
 import org.example.bankingsystemapi.model.dto.request.RefreshTokenRequest;
@@ -61,7 +64,7 @@ public class UserService {
         validateRegisterRequest(userRequestDto);
 
         if (userRepository.existsByEmail(userRequestDto.getEmail())) {
-            throw new RuntimeException("Email already exists");
+            throw new AlreadyExistsException("Email already exists"+ userRequestDto.getEmail());
         }
 
         User user = userMapper.toEntity(userRequestDto);
@@ -81,14 +84,14 @@ public class UserService {
         User user = userRepository.findByEmail(loginRequest.getEmail());
 
         if (user == null) {
-            throw new RuntimeException("User not found");
+            throw new NotFoundException("User not found"+ loginRequest.getEmail());
         }
         if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Wrong password");
+            throw new BadRequestException("Wrong password"+ loginRequest.getPassword());
         }
 
         if (user.getUserStatus() != UserStatus.ACTIVE) {
-            throw new RuntimeException("User is not active");
+            throw new BadRequestException("User is not active");
         }
 
         authenticationManager.authenticate(
@@ -115,7 +118,7 @@ public class UserService {
         String refreshToken = request.refreshToken();
 
         if (!jwtService.isValid(refreshToken)) {
-            throw new RuntimeException("Refresh token is invalid");
+            throw new BadRequestException("Refresh token is invalid");
         }
         Long userId = jwtService.extractUserId(refreshToken);
         String userName = jwtService.extractEmail(refreshToken);
@@ -147,12 +150,12 @@ public class UserService {
 
     public UserResponseDto updateUser(Long id, UserRequestDto userRequestDto) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new NotFoundException("User not found"+ id));
 
         User existingUser = userRepository.findByEmail(userRequestDto.getEmail());
 
         if (existingUser != null && !existingUser.getId().equals(id)) {
-            throw new RuntimeException("Email already exists");
+            throw new AlreadyExistsException("Email already exists" + userRequestDto.getEmail());
         }
         user.setName(userRequestDto.getName());
         user.setSurname(userRequestDto.getSurname());
@@ -171,10 +174,10 @@ public class UserService {
     public void activateUser(Long id) {
 
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new NotFoundException("User not found"+ id));
 
         if (user.getUserStatus() == UserStatus.ACTIVE) {
-            throw new RuntimeException("User is already active");
+            throw new BadRequestException("User is already active");
         }
 
         user.setUserStatus(UserStatus.ACTIVE);
@@ -185,17 +188,19 @@ public class UserService {
     private void validateRegisterRequest(UserRequestDto request) {
 
         if (request.getEmail() == null || request.getEmail().isBlank()) {
-            throw new RuntimeException("Email cannot be empty");
+            throw new BadRequestException("Email cannot be empty");
         }
 
         if (request.getPassword() == null || request.getPassword().length() < 6) {
-            throw new RuntimeException("Password must be at least 6 characters");
+            throw new BadRequestException("Password must be at least 6 characters");
         }
 
         if (request.getName() == null || request.getName().isBlank()) {
-            throw new RuntimeException("Name cannot be empty");
+            throw new BadRequestException("Name cannot be empty");
         }
     }
+
+
 
 
 }

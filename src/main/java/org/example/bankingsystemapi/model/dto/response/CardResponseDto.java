@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 @Data
 public class CardResponseDto {
 
+    private Long id;
     private String cardNumber;
     private LocalDate expiryDate;
     private CardType cardType;

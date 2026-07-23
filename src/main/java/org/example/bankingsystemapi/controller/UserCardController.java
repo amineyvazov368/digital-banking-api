@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import org.example.bankingsystemapi.model.dto.request.CardRequestDto;
+import org.example.bankingsystemapi.model.dto.response.CardOwnerDto;
 import org.example.bankingsystemapi.model.dto.response.CardResponseDto;
 import org.example.bankingsystemapi.service.CardService;
 import org.springframework.http.HttpStatus;
@@ -40,6 +41,15 @@ public class UserCardController {
         );
     }
 
+    @GetMapping("/my")
+    public ResponseEntity<List<CardResponseDto>> getMyCards(Authentication authentication) {
+        String username = authentication.getName();
+
+        return ResponseEntity.ok(
+                cardService.getCardsByUsername(username)
+        );
+    }
+
     @GetMapping("/account/{accountId}")
     public ResponseEntity<List<CardResponseDto>> getCardsByAccountId(
             @PathVariable Long accountId) {
@@ -67,6 +77,32 @@ public class UserCardController {
         return ResponseEntity.ok(
                 cardService.replaceCard(cardId, userId)
         );
+    }
+
+    @PatchMapping("/{cardId}/activate")
+    public ResponseEntity<Void> activateCard(
+            @PathVariable Long cardId,
+            @RequestParam Long userId) {
+
+        cardService.activeCard(cardId, userId);
+
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/{cardId}/block")
+    public ResponseEntity<Void> blockCard(
+            @PathVariable Long cardId,
+            @RequestParam Long userId) {
+
+        cardService.blockCard(cardId, userId);
+
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/owner/{cardNumber}")
+    public ResponseEntity<CardOwnerDto> getCardOwner(@PathVariable String cardNumber) {
+        CardOwnerDto cardOwner = cardService.getCardOwnerByNumber(cardNumber);
+        return ResponseEntity.ok(cardOwner);
     }
 
 }

@@ -45,12 +45,10 @@ public class UserAccountController {
         );
     }
 
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<AccountResponseDto>> getAccountsByUserId(
-            @PathVariable Long userId) {
-
+    @GetMapping("/my-accounts")
+    public ResponseEntity<List<AccountResponseDto>> getMyAccounts() {
         return ResponseEntity.ok(
-                accountService.getAccountByUserid(userId)
+                accountService.getMyAccounts()
         );
     }
 
@@ -61,5 +59,12 @@ public class UserAccountController {
         return ResponseEntity.ok(
                 accountService.getBalance(id)
         );
+    }
+    @PatchMapping("/{accountId}/close")
+    public ResponseEntity<Void> closeAccount(
+            @PathVariable Long accountId) {
+
+        accountService.closeAccount(accountId);
+        return ResponseEntity.ok().build();
     }
 }

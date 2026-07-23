@@ -1,25 +1,30 @@
 package org.example.bankingsystemapi.service;
 
+import lombok.RequiredArgsConstructor;
+import org.example.bankingsystemapi.exceptions.BadRequestException;
+import org.example.bankingsystemapi.exceptions.ForbiddenException;
+import org.example.bankingsystemapi.exceptions.NotFoundException;
+import org.example.bankingsystemapi.mapper.TransactionMapper;
+import org.example.bankingsystemapi.model.dto.response.TransactionResponseDto;
+import org.example.bankingsystemapi.model.entity.Account;
 import org.example.bankingsystemapi.model.entity.Card;
+import org.example.bankingsystemapi.model.entity.Transaction;
 import org.example.bankingsystemapi.model.entity.User;
+import org.example.bankingsystemapi.model.enums.AccountStatus;
 import org.example.bankingsystemapi.model.enums.CardStatus;
+import org.example.bankingsystemapi.model.enums.TransactionStatus;
+import org.example.bankingsystemapi.model.enums.TransactionType;
+import org.example.bankingsystemapi.repository.AccountRepository;
 import org.example.bankingsystemapi.repository.CardRepository;
+import org.example.bankingsystemapi.repository.TransactionRepository;
 import org.example.bankingsystemapi.repository.UserRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.transaction.annotation.Transactional;
-import lombok.RequiredArgsConstructor;
-import org.example.bankingsystemapi.mapper.TransactionMapper;
-import org.example.bankingsystemapi.model.dto.response.TransactionResponseDto;
-import org.example.bankingsystemapi.model.entity.Account;
-import org.example.bankingsystemapi.model.entity.Transaction;
-import org.example.bankingsystemapi.model.enums.AccountStatus;
-import org.example.bankingsystemapi.model.enums.TransactionStatus;
-import org.example.bankingsystemapi.model.enums.TransactionType;
-import org.example.bankingsystemapi.repository.AccountRepository;
-import org.example.bankingsystemapi.repository.TransactionRepository;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -34,25 +39,36 @@ public class TransactionService {
     private final TransactionMapper transactionMapper;
     private final CardRepository cardRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
+
+    private String getAuthenticatedUserEmail() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (principal instanceof UserDetails) {
+            return ((UserDetails) principal).getUsername();
+        }
+        return principal.toString();
+    }
 
     @Transactional
     public String deposit(String cardNumber, BigDecimal amount) {
-
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new RuntimeException("Amount must be greater than zero");
+            throw new BadRequestException("Amount must be greater than zero");
         }
 
         Account account = accountRepository.findByCardsCardNumber(cardNumber)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+                .orElseThrow(() -> new NotFoundException("Account not found for card: " + cardNumber));
+
         if (account.getStatus() != AccountStatus.ACTIVE) {
-            throw new RuntimeException("Account is not active");
+            throw new BadRequestException("Account is not active");
         }
 
         Card card = cardRepository.findByCardNumber(cardNumber)
-                .orElseThrow(() -> new RuntimeException("Card not found"));
-        if (card.getCardStatus() != CardStatus.ACTIVE){
-            throw new RuntimeException("Card is not active");
+                .orElseThrow(() -> new NotFoundException("Card not found with number: " + cardNumber));
+
+        if (card.getCardStatus() != CardStatus.ACTIVE) {
+            throw new BadRequestException("Card is not active");
         }
+
         Transaction transaction = new Transaction();
         transaction.setReceiverAccount(account);
         transaction.setSendAccount(null);
@@ -67,38 +83,44 @@ public class TransactionService {
 
             transaction.setStatus(TransactionStatus.SUCCESS);
             transactionRepository.save(transaction);
+            String maskCard = "*" + cardNumber.substring(cardNumber.length() - 4);
+
+            notificationService.createNotification(
+                    account.getUser().getId(),
+                    "Nağdlaşdırma",
+                    maskCard + " kartınızdan " + amount + " AZN məbləğində nağd pul çıxarıldı."
+            );
 
             return "Deposit successful";
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             transaction.setStatus(TransactionStatus.FAILED);
             transactionRepository.save(transaction);
-            throw e;
+            throw new BadRequestException("Deposit failed: " + e.getMessage());
         }
     }
 
     @Transactional
     public String withdraw(String cardNumber, BigDecimal amount) {
-
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new RuntimeException("Amount must be greater than zero");
+            throw new BadRequestException("Amount must be greater than zero");
         }
 
         Account account = accountRepository.findByCardsCardNumber(cardNumber)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+                .orElseThrow(() -> new NotFoundException("Account not found for card: " + cardNumber));
 
         if (account.getStatus() != AccountStatus.ACTIVE) {
-            throw new RuntimeException("Account is not active");
+            throw new BadRequestException("Account is not active");
         }
 
         Card card = cardRepository.findByCardNumber(cardNumber)
-                .orElseThrow(() -> new RuntimeException("Card not found"));
+                .orElseThrow(() -> new NotFoundException("Card not found with number: " + cardNumber));
 
-        if (card.getCardStatus() != CardStatus.ACTIVE){
-            throw new RuntimeException("Card is not active");
+        if (card.getCardStatus() != CardStatus.ACTIVE) {
+            throw new BadRequestException("Card is not active");
         }
 
         if (account.getBalance().compareTo(amount) < 0) {
-            throw new RuntimeException("Insufficient balance");
+            throw new BadRequestException("Insufficient balance");
         }
 
         Transaction transaction = new Transaction();
@@ -116,52 +138,63 @@ public class TransactionService {
             transaction.setStatus(TransactionStatus.SUCCESS);
             transactionRepository.save(transaction);
 
+            String maskCard = "*" + cardNumber.substring(cardNumber.length() - 4);
+
+            notificationService.createNotification(
+                    account.getUser().getId(),
+                    "Nağdlaşdırma",
+                    maskCard + " kartınızdan " + amount + " AZN məbləğində nağd pul çıxarıldı."
+            );
+
+
             return "Withdraw successful";
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             transaction.setStatus(TransactionStatus.FAILED);
             transactionRepository.save(transaction);
-            throw e;
+            throw new BadRequestException("Withdraw failed: " + e.getMessage());
         }
     }
+
     @Transactional
     public String transferByCardNumber(String fromCardNumber, String toCardNumber, BigDecimal amount) {
-
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new RuntimeException("Amount must be greater than zero");
+            throw new BadRequestException("Amount must be greater than zero");
         }
 
         if (fromCardNumber.equals(toCardNumber)) {
-            throw new RuntimeException("Cannot transfer to same account");
+            throw new BadRequestException("Cannot transfer to the same card/account");
         }
 
         Account fromAccount = accountRepository.findByCardsCardNumber(fromCardNumber)
-                .orElseThrow(() -> new RuntimeException("Sender account not found"));
+                .orElseThrow(() -> new NotFoundException("Sender account not found for card: " + fromCardNumber));
 
         Account toAccount = accountRepository.findByCardsCardNumber(toCardNumber)
-                .orElseThrow(() -> new RuntimeException("Receiver account not found"));
+                .orElseThrow(() -> new NotFoundException("Receiver account not found for card: " + toCardNumber));
 
         if (fromAccount.getStatus() != AccountStatus.ACTIVE) {
-            throw new RuntimeException("Sender account is not active");
+            throw new BadRequestException("Sender account is not active");
         }
 
         if (toAccount.getStatus() != AccountStatus.ACTIVE) {
-            throw new RuntimeException("Receiver account is not active");
+            throw new BadRequestException("Receiver account is not active");
         }
 
         Card fromCard = cardRepository.findByCardNumber(fromCardNumber)
-                .orElseThrow(() -> new RuntimeException("Sender card not found"));
+                .orElseThrow(() -> new NotFoundException("Sender card not found: " + fromCardNumber));
+
         if (fromCard.getCardStatus() != CardStatus.ACTIVE) {
-            throw new RuntimeException("Sender card is not active");
+            throw new BadRequestException("Sender card is not active");
         }
 
         Card toCard = cardRepository.findByCardNumber(toCardNumber)
-                .orElseThrow(() -> new RuntimeException("Receiver card not found"));
+                .orElseThrow(() -> new NotFoundException("Receiver card not found: " + toCardNumber));
+
         if (toCard.getCardStatus() != CardStatus.ACTIVE) {
-            throw new RuntimeException("Receiver card is not active");
+            throw new BadRequestException("Receiver card is not active");
         }
 
         if (fromAccount.getBalance().compareTo(amount) < 0) {
-            throw new RuntimeException("Insufficient balance");
+            throw new BadRequestException("Insufficient balance");
         }
 
         Transaction transaction = new Transaction();
@@ -183,74 +216,100 @@ public class TransactionService {
             transaction.setStatus(TransactionStatus.SUCCESS);
             transactionRepository.save(transaction);
 
+            String maskFromCard = "*" + fromCardNumber.substring(fromCardNumber.length() - 4);
+            String maskToCard = "*" + toCardNumber.substring(toCardNumber.length() - 4);
+
+            notificationService.createNotification(
+                    fromAccount.getUser().getId(),
+                    "Pul Çıxarışı",
+                    maskFromCard + " kartınızdan " + amount + " AZN məbləğində pul silindi."
+            );
+
+            notificationService.createNotification(
+                    toAccount.getUser().getId(),
+                    "Mədaxil",
+                    maskToCard + " kartınıza " + amount + " AZN məbləğində pul daxil oldu."
+            );
+
             return "Transfer successful";
         } catch (Exception e) {
-
             transaction.setStatus(TransactionStatus.FAILED);
             transactionRepository.save(transaction);
-
-            throw new RuntimeException("Transfer failed: " + e.getMessage());
+            throw new BadRequestException("Transfer failed: " + e.getMessage());
         }
     }
 
-//    public List<TransactionResponseDto> getTransactionHistory(Long accountId, int limit) {
-//
-//        if (!accountRepository.existsById(accountId)) {
-//            throw new RuntimeException("Account not found");
-//        }
-//
-//        Pageable pageable = PageRequest.of(0,limit);
-//
-//        return transactionRepository.findBySendAccountIdOrReceiverAccountIdOrderByCreatedAtDesc(accountId, accountId,pageable)
-//                .stream().map(transactionMapper::toDto).toList();
-//    }
-
     public List<TransactionResponseDto> getMyTransactionHistory(String email, String type, String search, int limit) {
-        // 1. İstifadəçini tapırıq
         User user = userRepository.findByEmail(email);
 
-        if (user ==null){
-            throw new RuntimeException("User not found");
+        if (user == null) {
+            throw new NotFoundException("User not found with email: " + email);
         }
 
-        // 2. Səhifələmə (limit) təyin edirik (məsələn, ən son tranzaksiyalar öncə gəlsin deyə)
         Pageable pageable = PageRequest.of(0, limit, Sort.by("createdAt").descending());
-
-        // 3. İstifadəçinin ID-sinə görə tranzaksiyaları bazadan çəkirik
         List<Transaction> transactions = transactionRepository.findAllByUserId(user.getId(), pageable);
 
-        // 4. Entity-ləri DTO-ya çevirib geri qaytarırıq
         return transactions.stream()
-                .map(transactionMapper::toDto) // Sənin map etmə məntiqin
+                .map(transactionMapper::toDto)
                 .collect(Collectors.toList());
     }
 
     public TransactionResponseDto getTransactionById(Long transactionId) {
-
         Transaction transaction = transactionRepository.findById(transactionId)
-                .orElseThrow(() -> new RuntimeException("Transaction not found"));
+                .orElseThrow(() -> new NotFoundException("Transaction not found with id: " + transactionId));
 
         return transactionMapper.toDto(transaction);
     }
 
     public List<TransactionResponseDto> getAllTransactions() {
         return transactionRepository.findAll()
-                .stream().map(transactionMapper::toDto)
+                .stream()
+                .map(transactionMapper::toDto)
                 .toList();
     }
 
     public List<TransactionResponseDto> getTransactionsByStatus(TransactionStatus status) {
         return transactionRepository.findByStatus(status)
-                .stream().map(transactionMapper::toDto)
-                .toList();
-
-    }
-
-    public List<TransactionResponseDto> getTransactionsByTransactionType(TransactionType transactionType) {
-        return transactionRepository.findByTransactionType(transactionType)
-                .stream().map(transactionMapper::toDto)
+                .stream()
+                .map(transactionMapper::toDto)
                 .toList();
     }
 
+    public List<TransactionResponseDto> getFilteredTransactions(String email, Long accountId, TransactionType type) {
+        List<Transaction> transactions = transactionRepository.findTransactionsWithFilters(email, accountId, type);
+        return transactions.stream()
+                .map(transactionMapper::toDto)
+                .collect(Collectors.toList());
+    }
 
+    public List<TransactionResponseDto> getMyTransactionsByAccountId(Long accountId) {
+        String currentUserEmail = getAuthenticatedUserEmail();
+
+        boolean ownsAccount = accountRepository.existsByIdAndUserEmail(accountId, currentUserEmail);
+
+        if (!ownsAccount) {
+            throw new ForbiddenException("Bu hesaba daxil olmaq və ya tranzaksiyalarını görmək icazəniz yoxdur!");
+        }
+
+        return transactionRepository.findByAccountId(accountId)
+                .stream()
+                .map(transactionMapper::toDto)
+                .toList();
+    }
+
+    public List<TransactionResponseDto> getMyTransactionsByType(TransactionType transactionType) {
+        String currentUserEmail = getAuthenticatedUserEmail();
+
+        return transactionRepository.findAllByUserEmailAndTransactionType(currentUserEmail, transactionType)
+                .stream()
+                .map(transactionMapper::toDto)
+                .toList();
+    }
+
+    public List<TransactionResponseDto> getMyTransactionsByCardNumber(String cardNumber) {
+        return transactionRepository.findAllByCardNumber(cardNumber)
+                .stream()
+                .map(transactionMapper::toDto)
+                .toList();
+    }
 }

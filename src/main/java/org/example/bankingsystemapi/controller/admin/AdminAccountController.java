@@ -57,13 +57,13 @@ public class AdminAccountController {
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<AccountResponseDto>> getAccountsByUserId(
-            @PathVariable Long userId) {
-
-        return ResponseEntity.ok(
-                accountService.getAccountByUserid(userId)
-        );
-    }
+//    @GetMapping("/user/{userId}")
+//    public ResponseEntity<List<AccountResponseDto>> getAccountsByUserId(
+//            @PathVariable Long userId) {
+//
+//        return ResponseEntity.ok(
+//                accountService.getAccountByUserid(userId)
+//        );
+//    }
 }
 
