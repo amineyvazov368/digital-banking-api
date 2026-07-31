@@ -1,73 +1,89 @@
-# digital-banking-api
+# 🏦 Digital Banking System API
 
-A RESTful digital banking system built with Spring Boot that simulates core banking operations including user management, account handling, card management, and secure money transfer functionality.
+A robust, enterprise-level RESTful digital banking system built with **Spring Boot 3**. The system simulates real-world banking operations including secure authentication, multi-account management, credit lifecycle, automated notification engines, and admin back-office management.
 
-## 🚀 Features
+---
 
-- User registration and authentication
-- Account creation with automatic default account setup
-- Account status management (ACTIVE, BLOCKED, CLOSED)
-- Card management (create, block, activate, replace)
-- Secure money transfer between accounts
-- Deposit and withdrawal operations
-- Transaction history tracking with status support (PENDING, SUCCESS, FAILED)
-- Business rule validations (balance checks, account status checks, ownership rules)
+## 🚀 Key Features
 
-## 🏦 Core Modules
+- **🔐 Enterprise Security:** JWT-based stateless authentication with RBAC (Role-Based Access Control) for `USER` and `ADMIN`.
+- **👤 User Management:** Secure registration, authentication, profile management, and account binding.
+- **💳 Account & Card Operations:** Multi-status accounts (ACTIVE, BLOCKED, CLOSED), card generation (PAN, CVV, Expiry), masking, and card replacement flows.
+- **💸 Financial Transactions:** Fast deposit, withdrawal, and inter-account money transfers with validation rules.
+- **📊 Credit & Loan Engine:** Complete loan lifecycle management (take credit, calculate monthly payments with interest rates, pay off loans, and track remaining balances).
+- **🔔 Real-time & Automated Notifications:** Dynamic notification system alerting both users and admins on key events (payments, transactions, loan updates).
+- **⏱️ Automated Task Scheduling:** Background Spring `@Scheduled` tasks to process payment dues, trigger timely payment alerts, and maintain loan statuses.
+- **🛡️ Admin Back-Office Module:** Dedicated administrative oversight for user monitoring, system notifications, and transaction tracking.
+- **⚡ Robust Error Handling:** Centralized `GlobalExceptionHandler` with standardized API error response payloads.
 
-### 👤 User Management
-- Register and login users
-- Password encryption using BCrypt
-- User status handling
+---
 
-### 💳 Account Management
-- Automatic account creation on registration
-- Multi-currency support
-- Account status lifecycle management
+## 🏗️ Tech Stack
 
-### 💳 Card Management
-- Generate card number, CVV, expiry date
-- Card activation, blocking, and replacement
-- Card limits per account
+- **Core Framework:** Java 17+, Spring Boot 3.x
+- **Security:** Spring Security, JWT (JSON Web Tokens)
+- **Data & Persistence:** Spring Data JPA, Hibernate, PostgreSQL / MySQL
+- **Scheduling:** Spring Task Scheduling (`@EnableScheduling`)
+- **Utilities & Tools:** Lombok, MapStruct (Mappers), Maven
+- **Architecture:** Layered Architecture (Controller → Service → Repository) with DTO Pattern
 
-### 💸 Transaction System
-- Deposit & withdrawal operations
-- Transfer between accounts
-- Transaction status tracking
-- Full transaction history
+---
 
-## 🛠️ Tech Stack
+## 🏦 Core Modules Breakdown
 
-- Java 17+
-- Spring Boot
-- Spring Data JPA
-- Hibernate
-- PostgreSQL / MySQL
-- Lombok
-- Maven
+### 🔐 1. Authentication & Security Module
+- JWT token issuance and validation.
+- Role-based authorization (`ROLE_USER`, `ROLE_ADMIN`).
+- Password encryption using BCrypt.
 
-## 📌 Architecture
+### 💳 2. Account & Card Management
+- Automatic default account creation upon user registration.
+- Account status lifecycle management and ownership validation.
+- Secure card operations: dynamic masking controls, limits, activation, blocking, and replacement.
 
-- Layered architecture (Controller → Service → Repository)
-- DTO pattern for request/response separation
-- Mapper layer for entity conversion
-- Transaction management with Spring `@Transactional`
+### 💸 3. Transaction Engine
+- Atomicity and consistency guaranteed using Spring `@Transactional`.
+- Deposit and withdrawal operations.
+- Inter-account fund transfers with strict balance checks.
+- Full transaction history with status tracking (`PENDING`, `SUCCESS`, `FAILED`).
 
-## 🔒 Business Rules
+### 📊 4. Credit & Loan Management System
+- Custom credit application and eligibility checks.
+- Automated monthly payment calculation with annual interest rates.
+- Loan repayment flow with remaining balance deduction and auto-closing (`PAID_OFF`).
 
-- Only ACTIVE accounts can perform transactions
-- Insufficient balance prevents withdrawal/transfer
-- Card ownership validation enforced
-- Transaction status tracking for reliability
+### 🔔 5. Notification & Event Engine
+- User notifications for transaction alerts, loan approvals, and repayment reminders.
+- Global Admin Broadcasts (`createNotificationForAdmins`) for system-wide monitoring.
+- Read/Unread status management and count metrics.
 
-## 📈 Future Improvements
+### ⏱️ 6. Automated Scheduler Service
+- Asynchronous background task execution using `@Scheduled`.
+- Auto-detection of upcoming credit payment deadlines.
+- Automatic dispatching of due payment alerts to active borrowers.
 
-- JWT authentication & Spring Security integration
-- Role-based access control (USER / ADMIN)
-- Microservice architecture migration
-- Notification system (email/SMS)
-- Audit logging system
+---
+
+## 🔒 Business Rules & Safeguards
+
+- Transactions are strictly allowed only for `ACTIVE` accounts.
+- Zero/Negative balances strictly block transfers and withdrawals.
+- Context-aware authorization checks guarantee users can only access their own accounts and cards.
+- Database operations are bound within transactional context to prevent partial state updates.
+
+---
+
+## 📈 Future Roadmap & Planned Improvements
+
+- [ ] **Microservices Architecture:** Decompose into independent services (Auth Service, Account Service, Notification Service).
+- [ ] **Redis Caching:** Integrate Redis for fast session management, token blacklisting, and caching user profiles.
+- [ ] **RabbitMQ / Kafka Integration:** Asynchronous event-driven architecture for high-throughput notification processing.
+- [ ] **Third-Party Payment Gateway Integration:** Simulate external card-to-card transfers and online payment processors.
+- [ ] **Docker & CI/CD Pipeline:** Containerize application with Docker Compose and set up GitHub Actions for automated testing & deployment.
+- [ ] **Swagger / OpenApi 3 Documentation:** Interactive API documentation for seamless frontend integration.
+
+---
 
 ## 📂 Project Status
 
-This project is currently under active development and being improved with additional banking features and security enhancements.
+**Active Development** — Continuously evolving with enterprise banking features, performance optimizations, and security enhancements.
