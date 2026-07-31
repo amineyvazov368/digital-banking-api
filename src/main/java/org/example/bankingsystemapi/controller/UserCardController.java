@@ -6,10 +6,12 @@ import lombok.Value;
 import org.example.bankingsystemapi.model.dto.request.CardRequestDto;
 import org.example.bankingsystemapi.model.dto.response.CardOwnerDto;
 import org.example.bankingsystemapi.model.dto.response.CardResponseDto;
+import org.example.bankingsystemapi.model.entity.User;
 import org.example.bankingsystemapi.service.CardService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,11 +44,13 @@ public class UserCardController {
     }
 
     @GetMapping("/my")
-    public ResponseEntity<List<CardResponseDto>> getMyCards(Authentication authentication) {
-        String username = authentication.getName();
+    public ResponseEntity<List<CardResponseDto>> getMyCards(@AuthenticationPrincipal User user) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
         return ResponseEntity.ok(
-                cardService.getCardsByUsername(username)
+                cardService.getCardsByUsername(user.getEmail())
         );
     }
 

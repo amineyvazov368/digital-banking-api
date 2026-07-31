@@ -24,6 +24,11 @@ public class AdminCardController {
         );
     }
 
+    @GetMapping
+    public ResponseEntity<List<CardResponseDto>> getAllCards() {
+       return ResponseEntity.ok(cardService.getAllCards());
+    }
+
     @GetMapping("/account/{accountId}/active")
     public ResponseEntity<List<CardResponseDto>> getActiveCards(
             @PathVariable Long accountId) {
@@ -36,7 +41,7 @@ public class AdminCardController {
     @PatchMapping("/{cardId}/block")
     public ResponseEntity<Void> blockCard(
             @PathVariable Long cardId,
-            @RequestParam Long userId) {
+            @RequestParam(required = false) Long userId) {
 
         cardService.blockCard(cardId, userId);
 

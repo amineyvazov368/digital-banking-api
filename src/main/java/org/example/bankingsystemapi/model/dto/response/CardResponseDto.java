@@ -19,4 +19,6 @@ public class CardResponseDto {
     private LocalDateTime createdAt;
     private Long accountId;
     private CardForm cardForm;
+
+    private AccountResponseDto account;
 }

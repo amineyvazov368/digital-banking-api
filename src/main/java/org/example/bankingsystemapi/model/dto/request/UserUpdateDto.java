@@ -2,11 +2,13 @@ package org.example.bankingsystemapi.model.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+import org.example.bankingsystemapi.model.enums.Role;
 
-@Data
-public class UserRequestDto {
+@Getter
+@Setter
+public class UserUpdateDto {
 
     @NotBlank(message = "Name cannot be empty")
     private String name;
@@ -18,9 +20,7 @@ public class UserRequestDto {
     @NotBlank(message = "Email is required")
     private String email;
 
-    @Size(min = 6, message = "Password must be at least 6 characters")
     private String password;
 
-
-
+    private Role role;
 }

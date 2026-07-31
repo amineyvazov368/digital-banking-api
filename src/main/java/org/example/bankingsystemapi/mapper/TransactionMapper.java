@@ -68,7 +68,7 @@ public class TransactionMapper {
             transactionResponseDto.setReceiverAccountNumber("SYSTEM");
             transactionResponseDto.setReceiverName("Sistem / Nağd");
         }
-
+        transactionResponseDto.setId(transaction.getId());
         transactionResponseDto.setAmount(transaction.getAmount());
         transactionResponseDto.setStatus(transaction.getStatus());
         transactionResponseDto.setDescription(transaction.getDescription());

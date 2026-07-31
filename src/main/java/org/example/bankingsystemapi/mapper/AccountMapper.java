@@ -25,6 +25,7 @@ public class AccountMapper {
         accountResponseDto.setBalance(account.getBalance());
         accountResponseDto.setCurrency(account.getCurrency());
         accountResponseDto.setAccountStatus(account.getStatus());
+        accountResponseDto.setUserId(account.getUser().getId());
         accountResponseDto.setCreatedAt(account.getCreatedAt());
         accountResponseDto.setCards(
                 account.getCards()
@@ -32,6 +33,12 @@ public class AccountMapper {
                         .map(cardMapper::toDto)
                         .toList()
         );
+
+        if (account.getUser() != null) {
+            accountResponseDto.setUserId(account.getUser().getId());
+            String fullName = account.getUser().getName() + " " + account.getUser().getSurname();
+            accountResponseDto.setUserName(fullName);
+        }
         return accountResponseDto;
     }
 }

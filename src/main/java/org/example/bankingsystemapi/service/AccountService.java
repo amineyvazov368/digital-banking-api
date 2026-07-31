@@ -12,6 +12,7 @@ import org.example.bankingsystemapi.model.enums.AccountStatus;
 import org.example.bankingsystemapi.model.enums.Currency;
 import org.example.bankingsystemapi.repository.AccountRepository;
 import org.example.bankingsystemapi.repository.UserRepository;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -29,12 +30,32 @@ public class AccountService {
     private final AccountMapper accountMapper;
     private final UserRepository userRepository;
 
+//    private String getAuthenticatedUserEmail() {
+//        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+//        if (principal instanceof UserDetails) {
+//            return ((UserDetails) principal).getUsername();
+//        }
+//        return principal.toString();
+//    }
+
     private String getAuthenticatedUserEmail() {
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof UserDetails) {
-            return ((UserDetails) principal).getUsername();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new BadRequestException("İstifadəçi authentifikasiya olunmayıb");
         }
-        return principal.toString();
+
+        Object principal = authentication.getPrincipal();
+
+        if (principal instanceof User user) {
+            return user.getEmail();
+        } else if (principal instanceof UserDetails userDetails) {
+            return userDetails.getUsername();
+        } else if (principal instanceof String stringPrincipal) {
+            return stringPrincipal;
+        }
+
+        throw new BadRequestException("Sistemdə autentifikasiya xətası yarandı");
     }
 
     public AccountResponseDto createAccount(Long userId, AccountRequestDto accountRequestDto) {

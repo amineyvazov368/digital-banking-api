@@ -8,13 +8,16 @@ import org.example.bankingsystemapi.mapper.UserMapper;
 import org.example.bankingsystemapi.model.dto.request.LoginRequest;
 import org.example.bankingsystemapi.model.dto.request.RefreshTokenRequest;
 import org.example.bankingsystemapi.model.dto.request.UserRequestDto;
+import org.example.bankingsystemapi.model.dto.request.UserUpdateDto;
 import org.example.bankingsystemapi.model.dto.response.LoginResponseDto;
 import org.example.bankingsystemapi.model.dto.response.RefreshTokenResponse;
 import org.example.bankingsystemapi.model.dto.response.UserResponseDto;
+import org.example.bankingsystemapi.model.dto.response.UserSummaryDto;
 import org.example.bankingsystemapi.model.entity.Account;
 import org.example.bankingsystemapi.model.entity.User;
 import org.example.bankingsystemapi.model.enums.Currency;
 import org.example.bankingsystemapi.model.enums.UserStatus;
+import org.example.bankingsystemapi.repository.AccountRepository;
 import org.example.bankingsystemapi.repository.UserRepository;
 import org.example.bankingsystemapi.security.JwtService;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -38,6 +41,7 @@ public class UserService {
     private final JwtService jwtService;
     private final UserResponseDto userResponseDto;
     private final AuthenticationManager authenticationManager;
+    private final AccountRepository accountRepository;
 
 
 //    public UserResponseDto registerUser(UserRequestDto userRequestDto) {
@@ -64,7 +68,7 @@ public class UserService {
         validateRegisterRequest(userRequestDto);
 
         if (userRepository.existsByEmail(userRequestDto.getEmail())) {
-            throw new AlreadyExistsException("Email already exists"+ userRequestDto.getEmail());
+            throw new AlreadyExistsException("Email already exists" + userRequestDto.getEmail());
         }
 
         User user = userMapper.toEntity(userRequestDto);
@@ -84,10 +88,10 @@ public class UserService {
         User user = userRepository.findByEmail(loginRequest.getEmail());
 
         if (user == null) {
-            throw new NotFoundException("User not found"+ loginRequest.getEmail());
+            throw new NotFoundException("User not found" + loginRequest.getEmail());
         }
         if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
-            throw new BadRequestException("Wrong password"+ loginRequest.getPassword());
+            throw new BadRequestException("Wrong password" + loginRequest.getPassword());
         }
 
         if (user.getUserStatus() != UserStatus.ACTIVE) {
@@ -101,13 +105,13 @@ public class UserService {
         String refreshToken = jwtService.generateRefreshToken(user.getId(), user.getEmail());
 
         UserResponseDto userResponseDto = userMapper.toResponseDto(user);
-        return new LoginResponseDto(user.getId(),userResponseDto,accessToken,refreshToken);
+        return new LoginResponseDto(user.getId(), userResponseDto, accessToken, refreshToken);
 
     }
 
     private final java.util.Set<String> tokenBlacklist = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
 
-    public void logout(String authHeader){
+    public void logout(String authHeader) {
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String accessToken = authHeader.substring(7);
             tokenBlacklist.add(accessToken);
@@ -135,34 +139,78 @@ public class UserService {
         return users;
     }
 
+    public List<UserResponseDto> getAllUsers(String search, String status) {
+        return userRepository.findAll()
+                .stream()
+                .filter(user -> user.getUserStatus() != UserStatus.DELETED)
+                .filter(user -> {
+                    boolean matchesSearch = true;
+                    boolean matchesStatus = true;
+
+                    if (search != null && !search.isBlank()) {
+                        String query = search.trim().toLowerCase();
+                        matchesSearch = (user.getName() != null && user.getName().toLowerCase().contains(query)) ||
+                                (user.getSurname() != null && user.getSurname().toLowerCase().contains(query)) ||
+                                (user.getEmail() != null && user.getEmail().toLowerCase().contains(query));
+                    }
+                    if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) {
+                        matchesStatus = user.getUserStatus() != null &&
+                                user.getUserStatus().name().equalsIgnoreCase(status);
+                    }
+
+                    return matchesSearch && matchesStatus;
+                })
+                .map(userMapper::toResponseDto)
+                .toList();
+    }
+
+    public UserSummaryDto getUserSummary() {
+        long totalUsers = userRepository.count();
+        long activeUsers = userRepository.countByUserStatus(UserStatus.ACTIVE);
+        long blockedUsers = userRepository.countByUserStatus(UserStatus.BLOCKED);
+        return  UserSummaryDto.builder()
+                .totalUsers(totalUsers)
+                .activeUsers(activeUsers)
+                .blockedUsers(blockedUsers)
+                .build();
+    }
+
     public UserResponseDto getUserById(Long id) {
-        User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findById(id).orElseThrow(() -> new NotFoundException("User not found"));
         return userMapper.toResponseDto(user);
 
     }
 
     public void blockUserById(Long id) {
-        User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        User user = userRepository.findById(id).orElseThrow(() -> new NotFoundException("User not found"));
         user.setUserStatus(UserStatus.BLOCKED);
         userRepository.save(user);
 
     }
 
-    public UserResponseDto updateUser(Long id, UserRequestDto userRequestDto) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("User not found"+ id));
+    @Transactional
+    public void deleteUserById(Long id) {
+        User user = userRepository.findById(id).orElseThrow(() -> new NotFoundException("User not found"));
 
-        User existingUser = userRepository.findByEmail(userRequestDto.getEmail());
+        user.setUserStatus(UserStatus.DELETED);
+        userRepository.save(user);
+    }
+
+
+    public UserResponseDto updateUser(Long id, UserUpdateDto userUpdateDto) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("User not found" + id));
+
+        User existingUser = userRepository.findByEmail(userUpdateDto.getEmail());
 
         if (existingUser != null && !existingUser.getId().equals(id)) {
-            throw new AlreadyExistsException("Email already exists" + userRequestDto.getEmail());
+            throw new AlreadyExistsException("Email already exists" + userUpdateDto.getEmail());
         }
-        user.setName(userRequestDto.getName());
-        user.setSurname(userRequestDto.getSurname());
-        user.setEmail(userRequestDto.getEmail());
 
-        if (userRequestDto.getPassword() != null && !userRequestDto.getPassword().isBlank()) {
-            user.setPassword(passwordEncoder.encode(userRequestDto.getPassword()));
+        userMapper.updateEntityFromDto(userUpdateDto, user);
+
+        if (userUpdateDto.getPassword() != null && !userUpdateDto.getPassword().isBlank()) {
+            user.setPassword(passwordEncoder.encode(userUpdateDto.getPassword()));
         }
 
         return userMapper.toResponseDto(userRepository.save(user));
@@ -174,7 +222,7 @@ public class UserService {
     public void activateUser(Long id) {
 
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("User not found"+ id));
+                .orElseThrow(() -> new NotFoundException("User not found" + id));
 
         if (user.getUserStatus() == UserStatus.ACTIVE) {
             throw new BadRequestException("User is already active");
@@ -199,8 +247,6 @@ public class UserService {
             throw new BadRequestException("Name cannot be empty");
         }
     }
-
-
 
 
 }

@@ -3,7 +3,9 @@ package org.example.bankingsystemapi.controller.admin;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.bankingsystemapi.model.dto.request.UserRequestDto;
+import org.example.bankingsystemapi.model.dto.request.UserUpdateDto;
 import org.example.bankingsystemapi.model.dto.response.UserResponseDto;
+import org.example.bankingsystemapi.model.dto.response.UserSummaryDto;
 import org.example.bankingsystemapi.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,11 +21,23 @@ public class AdminUserController {
 
     private final UserService userService;
 
+//    @Transactional(readOnly = true)
+//    @GetMapping
+//    public ResponseEntity<List<UserResponseDto>> getAllUsers() {
+//        List<UserResponseDto> userResponseDto = userService.getAllUsers();
+//        return ResponseEntity.ok(userResponseDto);
+//    }
+
     @Transactional(readOnly = true)
     @GetMapping
-    public ResponseEntity<List<UserResponseDto>> getAllUsers() {
-        List<UserResponseDto> userResponseDto = userService.getAllUsers();
+    public ResponseEntity<List<UserResponseDto>> getAllUsers(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status
+    ) {
+
+        List<UserResponseDto> userResponseDto = userService.getAllUsers(search, status);
         return ResponseEntity.ok(userResponseDto);
+
     }
 
     @Transactional(readOnly = true)
@@ -40,6 +54,12 @@ public class AdminUserController {
     }
 
 
+    @DeleteMapping({"/{id}"})
+    public ResponseEntity<Void> deleteUserById(@PathVariable Long id) {
+        userService.deleteUserById(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/{id}/activate")
     public ResponseEntity<Void> activateUser(@PathVariable Long id) {
 
@@ -50,10 +70,16 @@ public class AdminUserController {
 
     @PutMapping("/{id}")
     public ResponseEntity<UserResponseDto> updateUserById(@PathVariable Long id,
-                                                          @RequestBody @Valid UserRequestDto userRequestDto) {
-        UserResponseDto userResponseDto = userService.updateUser(id, userRequestDto);
+                                                          @RequestBody @Valid UserUpdateDto userUpdateDto) {
+        UserResponseDto userResponseDto = userService.updateUser(id, userUpdateDto);
         return ResponseEntity.ok(userResponseDto);
 
+    }
+
+    @Transactional(readOnly = true)
+    @GetMapping("/summary")
+    public ResponseEntity<UserSummaryDto> getUserSummary() {
+        return ResponseEntity.ok(userService.getUserSummary());
     }
 
 }

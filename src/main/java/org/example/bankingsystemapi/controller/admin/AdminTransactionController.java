@@ -5,11 +5,9 @@ import org.example.bankingsystemapi.model.dto.response.TransactionResponseDto;
 import org.example.bankingsystemapi.model.enums.TransactionStatus;
 import org.example.bankingsystemapi.model.enums.TransactionType;
 import org.example.bankingsystemapi.service.TransactionService;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -21,10 +19,13 @@ public class AdminTransactionController {
     private final TransactionService transactionService;
 
     @GetMapping
-    public ResponseEntity<List<TransactionResponseDto>> getAllTransactions() {
+    public ResponseEntity<Page<TransactionResponseDto>> getAllTransactions(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
 
         return ResponseEntity.ok(
-                transactionService.getAllTransactions()
+                transactionService.getAllTransactions(page, size)
         );
     }
 
@@ -38,11 +39,13 @@ public class AdminTransactionController {
     }
 
     @GetMapping("/status/{status}")
-    public ResponseEntity<List<TransactionResponseDto>> getTransactionsByStatus(
-            @PathVariable TransactionStatus status) {
+    public ResponseEntity<Page<TransactionResponseDto>> getTransactionsByStatus(
+            @PathVariable TransactionStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
 
         return ResponseEntity.ok(
-                transactionService.getTransactionsByStatus(status)
+                transactionService.getTransactionsByStatus(status,page,size)
         );
     }
 
@@ -53,6 +56,18 @@ public class AdminTransactionController {
         return ResponseEntity.ok(
                 transactionService.getMyTransactionsByType(type)
         );
+    }
+
+    @PatchMapping("/{id}/approve")
+    public ResponseEntity<String> approveTransaction(@PathVariable Long id) {
+        transactionService.approveTransactionByAdmin(id);
+        return ResponseEntity.ok("Transaction successfully approved and processed.");
+    }
+
+    @PatchMapping("/{id}/reject")
+    public ResponseEntity<String> rejectTransaction(@PathVariable Long id) {
+        transactionService.rejectTransactionByAdmin(id);
+        return ResponseEntity.ok("Transaction successfully rejected.");
     }
 
 }

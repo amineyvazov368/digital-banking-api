@@ -16,6 +16,8 @@ public class AccountResponseDto {
     private BigDecimal balance;
     private Currency currency;
     private AccountStatus accountStatus;
+    private Long userId;
+    private String userName;
     private LocalDateTime createdAt;
     private List<CardResponseDto> cards;
 

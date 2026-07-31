@@ -18,6 +18,7 @@ import org.example.bankingsystemapi.repository.AccountRepository;
 import org.example.bankingsystemapi.repository.CardRepository;
 import org.example.bankingsystemapi.repository.TransactionRepository;
 import org.example.bankingsystemapi.repository.UserRepository;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -202,41 +203,54 @@ public class TransactionService {
         transaction.setReceiverAccount(toAccount);
         transaction.setAmount(amount);
         transaction.setTransactionType(TransactionType.TRANSFER);
-        transaction.setStatus(TransactionStatus.PENDING);
         transaction.setDescription("Transfer from card " + fromCardNumber + " to card " + toCardNumber);
-        transactionRepository.save(transaction);
 
-        try {
-            fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
-            toAccount.setBalance(toAccount.getBalance().add(amount));
+        BigDecimal threshold = new BigDecimal("5000");
 
-            accountRepository.save(fromAccount);
-            accountRepository.save(toAccount);
-
-            transaction.setStatus(TransactionStatus.SUCCESS);
+        if (amount.compareTo(threshold) >= 0) {
+            transaction.setStatus(TransactionStatus.FLAGGED);
             transactionRepository.save(transaction);
-
-            String maskFromCard = "*" + fromCardNumber.substring(fromCardNumber.length() - 4);
-            String maskToCard = "*" + toCardNumber.substring(toCardNumber.length() - 4);
 
             notificationService.createNotification(
                     fromAccount.getUser().getId(),
-                    "Pul Çıxarışı",
-                    maskFromCard + " kartınızdan " + amount + " AZN məbləğində pul silindi."
+                    "Əməliyyat Yoxlamada",
+                    "Məbləğ böyük olduğu üçün " + amount + " AZN köçürməniz təhlükəsizlik yoxlamasındadır."
             );
 
-            notificationService.createNotification(
-                    toAccount.getUser().getId(),
-                    "Mədaxil",
-                    maskToCard + " kartınıza " + amount + " AZN məbləğində pul daxil oldu."
+            notificationService.createNotificationForAdmins(
+                    "Şübhəli/Böyük Köçürmə",
+                    fromAccount.getUser().getName() + " " + fromAccount.getUser().getSurname() +
+                            " tərəfindən " + amount + " AZN məbləğində köçürmə təsdiq gözləyir."
             );
 
-            return "Transfer successful";
-        } catch (Exception e) {
-            transaction.setStatus(TransactionStatus.FAILED);
-            transactionRepository.save(transaction);
-            throw new BadRequestException("Transfer failed: " + e.getMessage());
+            return "Transfer is flagged for high amount and pending admin approval";
         }
+
+        fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
+        toAccount.setBalance(toAccount.getBalance().add(amount));
+
+        accountRepository.save(fromAccount);
+        accountRepository.save(toAccount);
+
+        transaction.setStatus(TransactionStatus.SUCCESS);
+        transactionRepository.save(transaction);
+
+        String maskFromCard = "*" + fromCardNumber.substring(fromCardNumber.length() - 4);
+        String maskToCard = "*" + toCardNumber.substring(toCardNumber.length() - 4);
+
+        notificationService.createNotification(
+                fromAccount.getUser().getId(),
+                "Pul Çıxarışı",
+                maskFromCard + " kartınızdan " + amount + " AZN məbləğində pul silindi."
+        );
+
+        notificationService.createNotification(
+                toAccount.getUser().getId(),
+                "Mədaxil",
+                maskToCard + " kartınıza " + amount + " AZN məbləğində pul daxil oldu."
+        );
+
+        return "Transfer successful";
     }
 
     public List<TransactionResponseDto> getMyTransactionHistory(String email, String type, String search, int limit) {
@@ -261,18 +275,18 @@ public class TransactionService {
         return transactionMapper.toDto(transaction);
     }
 
-    public List<TransactionResponseDto> getAllTransactions() {
-        return transactionRepository.findAll()
-                .stream()
-                .map(transactionMapper::toDto)
-                .toList();
+    public Page<TransactionResponseDto> getAllTransactions(int page, int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        return transactionRepository.findAllByOrderByCreatedAtDesc(pageable)
+                .map(transactionMapper::toDto);
     }
 
-    public List<TransactionResponseDto> getTransactionsByStatus(TransactionStatus status) {
-        return transactionRepository.findByStatus(status)
-                .stream()
-                .map(transactionMapper::toDto)
-                .toList();
+    public Page<TransactionResponseDto> getTransactionsByStatus(TransactionStatus status,int page, int size) {
+
+        Pageable pageable1 = PageRequest.of(page, size);
+        return transactionRepository.findByStatus(status,pageable1)
+                .map(transactionMapper::toDto);
     }
 
     public List<TransactionResponseDto> getFilteredTransactions(String email, Long accountId, TransactionType type) {
@@ -311,5 +325,84 @@ public class TransactionService {
                 .stream()
                 .map(transactionMapper::toDto)
                 .toList();
+    }
+
+    @Transactional
+    public void approveTransactionByAdmin(Long transactionId) {
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new NotFoundException("Transaction not found"));
+
+        if (transaction.getStatus() != TransactionStatus.FLAGGED) {
+            throw new BadRequestException("Only FLAGGED transactions can be approved");
+        }
+
+        Account fromAccount = transaction.getSendAccount();
+        Account toAccount = transaction.getReceiverAccount();
+        BigDecimal amount = transaction.getAmount();
+
+        if (fromAccount.getBalance().compareTo(amount) < 0) {
+            transaction.setStatus(TransactionStatus.FAILED);
+            transactionRepository.save(transaction);
+
+            notificationService.createNotification(
+                    fromAccount.getUser().getId(),
+                    "Köçürmə Ləğv Edildi",
+                    "Hesabınızda kifayət qədər vəsaət olmadığı üçün " + amount + " AZN məbləğində köçürmə ləğv edildi."
+            );
+
+            throw new BadRequestException("Insufficient balance to approve transaction");
+        }
+
+        fromAccount.setBalance(fromAccount.getBalance().subtract(amount));
+        toAccount.setBalance(toAccount.getBalance().add(amount));
+
+        accountRepository.save(fromAccount);
+        accountRepository.save(toAccount);
+
+        transaction.setStatus(TransactionStatus.SUCCESS);
+        transactionRepository.save(transaction);
+
+        notificationService.createNotification(
+                fromAccount.getUser().getId(),
+                "Köçürmə Təsdiqləndi",
+                amount + " AZN məbləğində köçürməniz admin tərəfindən təsdiqləndi və icra olundu."
+        );
+
+        notificationService.createNotification(
+                toAccount.getUser().getId(),
+                "Mədaxil (Köçürmə)",
+                "Hesabınıza admin təsdiqindən sonra " + amount + " AZN məbləğində pul daxil oldu."
+        );
+    }
+
+    @Transactional
+    public void rejectTransactionByAdmin(Long transactionId) {
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new NotFoundException("Transaction not found"));
+
+        if (transaction.getStatus() != TransactionStatus.FLAGGED) {
+            throw new BadRequestException("Only FLAGGED transactions can be rejected");
+        }
+
+        transaction.setStatus(TransactionStatus.FAILED);
+        transactionRepository.save(transaction);
+
+        Account fromAccount = transaction.getSendAccount();
+        Account toAccount = transaction.getReceiverAccount();
+        BigDecimal amount = transaction.getAmount();
+
+        notificationService.createNotification(
+                fromAccount.getUser().getId(),
+                "Köçürmə Ləğv Edildi",
+                amount + " AZN məbləğində köçürmə sorğunuz admin tərəfindən rədd edildi."
+        );
+
+        if (toAccount != null && toAccount.getUser() != null) {
+            notificationService.createNotification(
+                    toAccount.getUser().getId(),
+                    "Köçürmə İmtina Edildi",
+                    "Hesabınıza gözlənilən " + amount + " AZN məbləğində köçürmə admin tərəfindən rədd edildi."
+            );
+        }
     }
 }

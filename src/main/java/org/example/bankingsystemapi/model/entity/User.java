@@ -37,7 +37,7 @@ public class User {
     @Enumerated(EnumType.STRING)
     private Role role=Role.USER;
 
-    @OneToMany(mappedBy = "user",fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "user",fetch = FetchType.LAZY,cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Account> accounts;
 
     @Enumerated(EnumType.STRING)

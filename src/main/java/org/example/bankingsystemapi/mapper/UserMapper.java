@@ -2,6 +2,7 @@ package org.example.bankingsystemapi.mapper;
 
 import lombok.RequiredArgsConstructor;
 import org.example.bankingsystemapi.model.dto.request.UserRequestDto;
+import org.example.bankingsystemapi.model.dto.request.UserUpdateDto;
 import org.example.bankingsystemapi.model.dto.response.AccountResponseDto;
 import org.example.bankingsystemapi.model.dto.response.UserResponseDto;
 import org.example.bankingsystemapi.model.entity.User;
@@ -25,9 +26,23 @@ public class UserMapper {
         return user;
 
     }
+    public void updateEntityFromDto(UserUpdateDto userUpdateDto, User user) {
+        if (userUpdateDto == null || user == null) {
+            return;
+        }
+
+        user.setName(userUpdateDto.getName());
+        user.setSurname(userUpdateDto.getSurname());
+        user.setEmail(userUpdateDto.getEmail());
+
+        if (userUpdateDto.getRole() != null) {
+            user.setRole(userUpdateDto.getRole());
+        }
+    }
 
     public UserResponseDto toResponseDto(User user) {
         UserResponseDto userResponseDto = new UserResponseDto();
+        userResponseDto.setId(user.getId());
         userResponseDto.setName(user.getName());
         userResponseDto.setSurname(user.getSurname());
         userResponseDto.setEmail(user.getEmail());

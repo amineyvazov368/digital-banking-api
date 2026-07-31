@@ -53,6 +53,12 @@ public class CardService {
         return cardMapper.toDto(saveCard);
     }
 
+    public List<CardResponseDto> getAllCards() {
+       return cardRepository.findAll()
+                .stream().map(cardMapper::toDto)
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public CardResponseDto getCardById(Long id) {
         Card card = cardRepository.findById(id)

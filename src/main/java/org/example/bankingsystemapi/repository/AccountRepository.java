@@ -1,6 +1,7 @@
 package org.example.bankingsystemapi.repository;
 
 import org.example.bankingsystemapi.model.entity.Account;
+import org.example.bankingsystemapi.model.entity.User;
 import org.example.bankingsystemapi.model.enums.AccountStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -15,6 +16,8 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     List<Account> findByUserEmailAndStatus(String email, AccountStatus status);
     long countByUserEmailAndStatus(String email, AccountStatus status);
 
+    List<Account> findAllByUserId(Long userId);
+
     Optional<Account> findByCardsCardNumber(String cardNumber);
 
     List<Account> findByUserId(Long userId);
@@ -26,4 +29,6 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     boolean existsByIdAndUserEmail(Long id, String email);
 
     Long countByUserEmail(String email);
+
+    void deleteAllByUser(User user);
 }

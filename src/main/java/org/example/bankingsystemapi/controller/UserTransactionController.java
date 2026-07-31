@@ -3,6 +3,7 @@ package org.example.bankingsystemapi.controller;
 import lombok.RequiredArgsConstructor;
 import org.example.bankingsystemapi.model.dto.request.TransactionRequestDto;
 import org.example.bankingsystemapi.model.dto.response.TransactionResponseDto;
+import org.example.bankingsystemapi.model.entity.User;
 import org.example.bankingsystemapi.model.enums.TransactionType;
 import org.example.bankingsystemapi.service.TransactionService;
 import org.springframework.http.HttpStatus;
@@ -113,7 +114,7 @@ public class UserTransactionController {
 
     @GetMapping("/history/my")
     public ResponseEntity<List<TransactionResponseDto>> getMyTransactions(
-            @AuthenticationPrincipal UserDetails userDetails,
+            @AuthenticationPrincipal User userDetails,
             @RequestParam(required = false) Long accountId,
             @RequestParam(required = false) String type) {
 
@@ -122,7 +123,7 @@ public class UserTransactionController {
             txType = TransactionType.valueOf(type.toUpperCase());
         }
 
-        String email = userDetails.getUsername();
+        String email = userDetails.getEmail();
 
         List<TransactionResponseDto> transactions = transactionService.getFilteredTransactions(email, accountId, txType);
         return ResponseEntity.ok(transactions);
