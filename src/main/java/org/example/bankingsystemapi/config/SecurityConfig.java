@@ -25,7 +25,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
-    // @Bean yaratmaq əvəzinə mövcud filteri birbaşa buraya inject edirik!
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
@@ -46,7 +45,6 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    // BURADAKI jwtTokenFilter() BEAN-İNİ SİLDİK! ÇÜNKİ @Component olaraq yuxarıda inject etdik.
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {

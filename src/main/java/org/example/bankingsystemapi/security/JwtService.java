@@ -26,11 +26,10 @@ public class JwtService {
         this.expiration = expiration;
     }
 
-    // Arqument 'username' yerinə 'email' oldu
     public String generateAccessToken(Long userId, String email) {
         return Jwts.builder()
                 .setSubject(userId.toString())
-                .claim("email", email) // Claim adını da email etdik
+                .claim("email", email)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 2))
                 .signWith(key)
@@ -51,7 +50,6 @@ public class JwtService {
         return Long.parseLong(extractClaims(token).getSubject());
     }
 
-    // Artıq tokendən token sahibinin emailini oxuyuruq
     public String extractEmail(String token) {
         return extractClaims(token).get("email", String.class);
     }

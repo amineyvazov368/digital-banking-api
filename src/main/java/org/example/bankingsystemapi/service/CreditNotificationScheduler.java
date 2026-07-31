@@ -43,7 +43,7 @@ public class CreditNotificationScheduler {
                 );
 
                 notificationService.createNotification(userId,title,message);
-                credit.setNextPaymentDate(LocalDateTime.now().plusMinutes(5));
+                credit.setNextPaymentDate(LocalDateTime.now().plusMonths(1));
                 creditRepository.save(credit);
 
                 log.info("Kredit ID #{} üçün User ID #{} istifadəçisinə bildiriş göndərildi.", credit.getId(), userId);

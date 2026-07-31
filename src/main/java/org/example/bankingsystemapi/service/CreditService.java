@@ -88,7 +88,7 @@ public class CreditService {
         credit.setRemainingAmount(totalAmount);
         credit.setMonthlyPayment(creditAmount);
         credit.setInterestRate(annualInterestRate);
-        credit.setNextPaymentDate(LocalDateTime.now().plusMinutes(5));
+        credit.setNextPaymentDate(LocalDateTime.now().plusMonths(1));
         credit.setStatus(CreditStatus.ACTIVE);
         creditRepository.save(credit);
 
@@ -97,8 +97,7 @@ public class CreditService {
 
         notificationService.createNotification(
                 user.getId(),
-                title,message
-
+                title, message
         );
 
         String adminTitle = "Yeni Kredit Götürüldü";
@@ -164,7 +163,7 @@ public class CreditService {
             message = String.format("Kreditiniz üzrə %.2f AZN ödəniş qəbul edildi. Qalıq borc: %.2f AZN.", amount, updatedCredit.getRemainingAmount());
         }
         notificationService.createNotification(
-                user.getId(),title,message
+                user.getId(), title, message
         );
 
         String adminTitle = "Kredit Ödənişi Edildi";

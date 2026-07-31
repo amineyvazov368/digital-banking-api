@@ -1,0 +1,54 @@
+
+
+services:
+  # 1. PostgreSQL Baza Servisi
+  postgres-db:
+    image: postgres:16-alpine
+    container_name: banking-postgres
+    environment:
+      POSTGRES_DB: banking_db          # Öz bazanın adı ilə əvəzlə
+      POSTGRES_USER: postgres          # Öz istifadəçi adın
+      POSTGRES_PASSWORD: mypassword    # Öz şifrən
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - banking-network
+
+  # 2. Spring Boot Backend Servisi
+  backend:
+    build:
+      context: .                       # Çünki docker-compose buradadır
+      dockerfile: Dockerfile
+    container_name: banking-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/banking_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: mypassword
+    depends_on:
+      - postgres-db
+    networks:
+      - banking-network
+
+  # 3. React Frontend Servisi
+  frontend:
+    build:
+      context: C:/Users/ASUS/Desktop/BankingFrontend  # Absolyut yol
+      dockerfile: Dockerfile
+    container_name: banking-frontend
+    ports:
+      - "5173:5173"                    # React/Vite hansı portdadırsa
+    depends_on:
+      - backend
+    networks:
+      - banking-network
+
+volumes:
+  postgres_data:
+
+networks:
+  banking-network:
+    driver: bridge
